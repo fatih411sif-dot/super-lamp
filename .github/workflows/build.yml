@@ -1,0 +1,35 @@
+name: Build SIM SMP mod
+
+on:
+  push:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: sim-smp
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.6.0
+
+      - name: Build
+        run: gradle build --no-daemon
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-smp-jar
+          path: |
+            sim-smp/build/libs/*.jar
+            !sim-smp/build/libs/*-sources.jar
