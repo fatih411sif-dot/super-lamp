@@ -10,7 +10,7 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -326,7 +326,7 @@ public final class TradeManager {
         }
 
         @Override
-        public void clicked(int slotId, int button, ClickType clickType, Player player) {
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
             if (session.finished) return;
 
             if (slotId >= 0 && slotId < 54) {
@@ -341,7 +341,7 @@ public final class TradeManager {
                 if (!isMine(slotId)) return; // partner's items, dividers and info slots are read-only
             }
             // No shift-click, double-click or drag: they could touch read-only slots.
-            if (clickType == ClickType.QUICK_MOVE || clickType == ClickType.PICKUP_ALL || clickType == ClickType.QUICK_CRAFT) {
+            if (clickType == ContainerInput.QUICK_MOVE || clickType == ContainerInput.PICKUP_ALL || clickType == ContainerInput.QUICK_CRAFT) {
                 return;
             }
 
