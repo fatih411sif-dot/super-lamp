@@ -65,7 +65,7 @@ public final class SellMenu extends ChestMenu {
         }
 
         for (ItemStack s : unsellable) {
-            sp.getInventory().placeItemBackInInventory(s);
+            ItemGiver.give(sp, s);
         }
 
         if (total > 0) {

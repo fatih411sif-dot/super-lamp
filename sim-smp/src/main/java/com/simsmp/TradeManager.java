@@ -176,8 +176,8 @@ public final class TradeManager {
                 menuB = new TradeMenu(id, inv, viewB, this, false);
                 return menuB;
             }, Component.literal("Trade with " + Msg.name(a))));
-            Msg.info(a, "Place items on the left. Use /trade money <amount> to add rupees, then click the green button.");
-            Msg.info(b, "Place items on the left. Use /trade money <amount> to add rupees, then click the green button.");
+            Msg.info(a, "Place items on the left. Use /trade money <amount> to add rupees, then click the emerald.");
+            Msg.info(b, "Place items on the left. Use /trade money <amount> to add rupees, then click the emerald.");
         }
 
         /** The offering player changed their items: mirror to the partner and reset accepts. */
@@ -219,21 +219,21 @@ public final class TradeManager {
         }
 
         private void refreshView(SimpleContainer view, long myMoney, boolean myAccept, long theirMoney, boolean theirAccept) {
-            ItemStack divider = named(Items.GRAY_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY, null);
+            ItemStack divider = named(Items.PAPER, " ", ChatFormatting.GRAY, null);
             for (int r = 0; r < 5; r++) view.setItem(r * 9 + 4, divider.copy());
-            ItemStack filler = named(Items.BLACK_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY, null);
+            ItemStack filler = named(Items.PAPER, " ", ChatFormatting.GRAY, null);
             for (int c = 0; c < 9; c++) view.setItem(45 + c, filler.copy());
 
-            view.setItem(SLOT_CANCEL, named(Items.RED_CONCRETE, "Cancel trade", ChatFormatting.RED,
+            view.setItem(SLOT_CANCEL, named(Items.BARRIER, "Cancel trade", ChatFormatting.RED,
                     "Everything goes back to its owner"));
             view.setItem(SLOT_MY_MONEY, named(Items.GOLD_INGOT, "Your offer: " + eco.fmt(myMoney), ChatFormatting.GOLD,
                     "Use /trade money <amount>"));
             view.setItem(SLOT_MY_ACCEPT, myAccept
-                    ? named(Items.YELLOW_CONCRETE, "Accepted - click to undo", ChatFormatting.YELLOW, "Waiting for your partner")
-                    : named(Items.LIME_CONCRETE, "Click to ACCEPT", ChatFormatting.GREEN, "Check the trade first!"));
+                    ? named(Items.REDSTONE, "Accepted - click to undo", ChatFormatting.YELLOW, "Waiting for your partner")
+                    : named(Items.EMERALD, "Click to ACCEPT", ChatFormatting.GREEN, "Check the trade first!"));
             view.setItem(SLOT_THEIR_ACCEPT, theirAccept
-                    ? named(Items.LIME_CONCRETE, "Partner accepted", ChatFormatting.GREEN, null)
-                    : named(Items.GRAY_CONCRETE, "Partner has not accepted", ChatFormatting.GRAY, null));
+                    ? named(Items.EMERALD, "Partner accepted", ChatFormatting.GREEN, null)
+                    : named(Items.COAL, "Partner has not accepted", ChatFormatting.GRAY, null));
             view.setItem(SLOT_THEIR_MONEY, named(Items.GOLD_NUGGET, "Their offer: " + eco.fmt(theirMoney), ChatFormatting.GOLD, null));
         }
 
@@ -251,7 +251,7 @@ public final class TradeManager {
         }
 
         private void give(ServerPlayer p, List<ItemStack> items) {
-            for (ItemStack s : items) p.getInventory().placeItemBackInInventory(s);
+            for (ItemStack s : items) ItemGiver.give(p, s);
         }
 
         private void closeIfOpen(TradeMenu menu, ServerPlayer p) {
