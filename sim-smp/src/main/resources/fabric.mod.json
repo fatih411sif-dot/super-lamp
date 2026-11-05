@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "sim_smp",
+  "version": "${version}",
+  "name": "SIM SMP",
+  "description": "Rupee economy, sidebar scoreboard, sell GUI and player trading for SIM SMP.",
+  "authors": ["SIM SMP"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.simsmp.SimSmp"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
