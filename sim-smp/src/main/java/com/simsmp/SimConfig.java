@@ -25,7 +25,7 @@ public final class SimConfig {
     /** Percent of each player-market sale taken by the "server" (0 = no fee). */
     public int marketTaxPercent = 0;
     /** Daily shop: how often it refreshes and how many items each player sees (max 25). */
-    public int dailyShopHours = 5;
+    public int dailyShopHours = 1;
     public int dailyShopSlots = 20;
     /** Price of one /gacha pull. */
     public long gachaPrice = 100;
