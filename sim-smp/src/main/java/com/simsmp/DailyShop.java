@@ -24,12 +24,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Daily shop: every player sees their own random selection of items, which changes every
- * {@code dailyShopHours} hours (default 5). Which items can appear, how often, and the
+ * Daily shop: ONE shared selection of items for all players, which changes every
+ * {@code dailyShopHours} hours (default 1). Which items can appear, how often, and the
  * price are set in dailyshop.json ("chance" = weight: higher means it shows up more often).
  *
- * The selection is derived from (player, time period), so nothing about the offers needs to be
- * stored; only which offers a player already bought in the current period is saved.
+ * Every offer can be bought only once per period by anyone: when a player buys it, it is sold
+ * out for everybody else until the next refresh (first come, first served).
+ *
+ * The selection is derived from the time period, so nothing about the offers needs to be
+ * stored; only which offers were already sold in the current period is saved.
  */
 public final class DailyShop {
     /** One line of dailyshop.json. */
@@ -45,7 +48,7 @@ public final class DailyShop {
     /** What gets saved between restarts. */
     private static final class State {
         long period = -1;
-        Map<String, List<String>> bought = new HashMap<>();
+        List<String> sold = new ArrayList<>();
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -59,7 +62,7 @@ public final class DailyShop {
     private List<Entry> pool = new ArrayList<>();
     private List<Entry> valid; // pool entries whose item really exists (resolved on first use)
     private long statePeriod = -1;
-    private final Map<UUID, Set<String>> bought = new HashMap<>();
+    private final Set<String> sold = new HashSet<>(); // offers already bought by someone this period
     private boolean dirty;
 
     public DailyShop(SimConfig cfg, EconomyManager eco, Path dir) {
@@ -90,18 +93,13 @@ public final class DailyShop {
             pool = defaultPool();
         }
 
-        // purchases of the current period
+        // offers sold in the current period
         if (Files.exists(stateFile)) {
             try (Reader r = Files.newBufferedReader(stateFile)) {
                 State s = GSON.fromJson(r, State.class);
                 if (s != null && s.period == currentPeriod()) {
                     statePeriod = s.period;
-                    for (Map.Entry<String, List<String>> e : s.bought.entrySet()) {
-                        try {
-                            bought.put(UUID.fromString(e.getKey()), new HashSet<>(e.getValue()));
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                    }
+                    if (s.sold != null) sold.addAll(s.sold);
                 }
             } catch (IOException | RuntimeException e) {
                 SimSmp.LOGGER.warn("dailyshop_state.json is unreadable; purchases of this period are forgotten", e);
@@ -114,7 +112,7 @@ public final class DailyShop {
         dirty = false;
         State s = new State();
         s.period = statePeriod;
-        bought.forEach((k, v) -> s.bought.put(k.toString(), new ArrayList<>(v)));
+        s.sold.addAll(sold);
         try {
             Files.createDirectories(stateFile.getParent());
             Path tmp = stateFile.resolveSibling("dailyshop_state.json.tmp");
@@ -149,7 +147,7 @@ public final class DailyShop {
         long period = currentPeriod();
         if (period != statePeriod) {
             statePeriod = period;
-            bought.clear();
+            sold.clear();
             dirty = true;
         }
     }
@@ -177,14 +175,13 @@ public final class DailyShop {
         return valid;
     }
 
-    /** This player's offers for the current period (same list every time within a period). */
-    public synchronized List<Offer> offersFor(UUID player) {
+    /** The offers for the current period: the same list for every player, and the same every time within a period. */
+    public synchronized List<Offer> offers() {
         rollover();
         List<Entry> candidates = new ArrayList<>(validEntries());
         int slots = Math.max(1, Math.min(MAX_SLOTS, cfg.dailyShopSlots));
 
-        long seed = player.getMostSignificantBits() * 31 + player.getLeastSignificantBits();
-        seed = seed * 0x9E3779B97F4A7C15L + statePeriod * 0xC2B2AE3D27D4EB4FL;
+        long seed = statePeriod * 0xC2B2AE3D27D4EB4FL + 0x9E3779B97F4A7C15L;
         Random random = new Random(seed);
 
         List<Offer> out = new ArrayList<>();
@@ -211,14 +208,15 @@ public final class DailyShop {
         return out;
     }
 
-    public synchronized boolean isBought(UUID player, String id) {
-        Set<String> set = bought.get(player);
-        return set != null && set.contains(id);
+    /** True when somebody already bought this offer in the current period. */
+    public synchronized boolean isSold(String id) {
+        rollover();
+        return sold.contains(id);
     }
 
     public synchronized boolean buy(ServerPlayer p, String id) {
         Offer offer = null;
-        for (Offer o : offersFor(p.getUUID())) {
+        for (Offer o : offers()) {
             if (o.id().equals(id)) {
                 offer = o;
                 break;
@@ -228,15 +226,15 @@ public final class DailyShop {
             Msg.err(p, "That offer is gone - the shop has refreshed.");
             return false;
         }
-        if (isBought(p.getUUID(), id)) {
-            Msg.err(p, "You already bought that today.");
+        if (sold.contains(id)) {
+            Msg.err(p, "Too late - someone else already bought that.");
             return false;
         }
         if (!eco.take(p.getUUID(), offer.price())) {
             Msg.err(p, "You need " + eco.fmt(offer.price()) + " but only have " + eco.fmt(eco.get(p.getUUID())) + ".");
             return false;
         }
-        bought.computeIfAbsent(p.getUUID(), k -> new HashSet<>()).add(id);
+        sold.add(id);
         dirty = true;
         ItemGiver.give(p, offer.stack().copy());
         save();
