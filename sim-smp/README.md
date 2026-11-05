@@ -49,14 +49,14 @@ Gradle wrapper, then copy this project's `src/` folder plus `build.gradle`/`grad
 | `/market sell <price> [amount]` | everyone | List the item in your main hand (any item). With `amount` you sell only that many and keep the rest; without it the whole stack. The price is for the whole listing |
 | `/redeem <code>` | everyone | Redeem a code for money and/or items (once per player per code) |
 | `/gacha` | everyone | Gacha GUI: pay ₹100, a row of prizes spins and slows down, and the prize stops under the arrow |
-| `/dshop` | everyone | Your personal daily shop: 20 random items, different for every player |
+| `/dshop` | everyone | Daily shop: 20 random items, the same for every player. When someone buys an item it is sold out for everybody (first come, first served) |
 | `/prices` | everyone | What the system pays for each item with `/sell` |
 | `/sellprice hand <price>` | OP | Set the system sell price of the item in your hand |
 | `/sellprice set <item> <price>` | OP | e.g. `/sellprice set diamond 80` |
 | `/sellprice remove <item>` | OP | Stop the system buying that item |
 
 - `/sell` still buys ores and resources (coal, iron, copper, gold, diamond, emerald, netherite, ...) for the system.
-- Daily shop refreshes every **5 hours** (`dailyShopHours` in `config.json`). Each offer can be bought once per refresh.
+- Daily shop refreshes every **1 hour** (`dailyShopHours` in `config.json`). The shop is shared by all players and each offer can be bought only once per refresh, by whoever is fastest.
 - Items, amount, price and **chance** of the daily shop are in `config/sim_smp/dailyshop.json`:
   `{"item": "minecraft:diamond", "amount": 2, "price": 300, "chance": 10}`
   `chance` is a weight: 100 = common, 40 = uncommon, 10 = rare, 3 = epic. Restart after editing.
