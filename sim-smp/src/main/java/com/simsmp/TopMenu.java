@@ -41,7 +41,7 @@ public final class TopMenu extends ChestMenu {
         view.setItem(SLOT_TITLE, Ui.named(Items.NETHER_STAR, "Richest Players", ChatFormatting.LIGHT_PURPLE, "Top 3 of SIM SMP"));
         view.setItem(SLOT_FIRST, rank(eco, top, 0, Items.GOLD_BLOCK, ChatFormatting.GOLD));
         view.setItem(SLOT_SECOND, rank(eco, top, 1, Items.IRON_BLOCK, ChatFormatting.WHITE));
-        view.setItem(SLOT_THIRD, rank(eco, top, 2, Items.COPPER_BLOCK, ChatFormatting.YELLOW));
+        view.setItem(SLOT_THIRD, rank(eco, top, 2, Items.COPPER_INGOT, ChatFormatting.YELLOW));
         view.setItem(SLOT_YOU, Ui.named(Items.GOLD_INGOT, "Your rank: #" + eco.rankOf(player.getUUID()), ChatFormatting.GREEN,
                 "Balance: " + eco.fmt(eco.get(player.getUUID()))));
 
