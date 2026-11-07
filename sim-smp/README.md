@@ -72,7 +72,7 @@ Gradle wrapper, then copy this project's `src/` folder plus `build.gradle`/`grad
 - The money is taken when the spin starts. If the window is closed during the spin, the prize is handed over immediately.
 
 ## Classes
-8 classes: Economy (Miner, Farmer, Lumberjack, Hunter) and Combat (Archer, Berserker, Warrior, Mage). **Miner**, **Farmer** and **Lumberjack** have a skill tree for now.
+8 classes: Economy (Miner, Farmer, Lumberjack, Hunter) and Combat (Archer, Berserker, Warrior, Mage). **Miner**, **Farmer**, **Lumberjack**, **Hunter**, **Archer** and **Berserker** have a skill tree for now.
 - `/class` opens the GUI. First choose **2 Economy + 2 Combat** classes (click to pick), then click one of them twice to equip it. Only ONE class is equipped at a time; every class keeps its own level, XP and skills.
 - Switching the equipped class has a cooldown (`classSwitchMinutes`, default 10). To swap one of your 4 chosen classes use `/class replace <old> <new>`: costs `classChangeFee` (default 10,000) and the old class goes back to level 0.
 - **Class XP** is shown in the sidebar. It is also the money for skills. Level comes from total XP earned, so buying skills never lowers it.
@@ -100,6 +100,33 @@ XP: 2 for every log of a natural tree (stripped logs never count, and a log only
 - Fast Growth I-V: +40%, +50%, +60%, +70%, +120% sapling growth speed within 10 blocks of you (total +340%).
 - Chopping Speed I-III: +20%, +30%, +50% (total +100%), only while you hold an axe.
 - `treegrow` ability: right-click a sapling with an axe and it grows into a full tree right away. Cooldown `instantTreeCooldownSeconds` (default 30). If the tree has no room it does not grow and the cooldown is not used.
+
+### Hunter
+XP: 3 for every farm animal you kill (cow, mooshroom, pig, sheep, chicken, rabbit). The whole tree costs 10,250 Class XP.
+- Hunter Value I-V: +40%, +50%, +60%, +70%, +100% money when selling meat (raw and cooked), leather and feathers with `/sell` (total +320%). Does not apply to items bought from `/dshop`.
+- `meatluck` ability (Lucky Drops): the meat an animal drops is increased by 1 or 2.
+- `autocook` ability (Auto Cook): raw meat from animals you kill drops already cooked.
+
+### Combat classes: how Class XP works
+Combat classes earn XP by **killing** with their own weapon: a hostile mob gives half of its max health in XP (zombie = 10, at least 1, at most 100); another player gives 10 XP, but the same victim only counts again after `playerKillXpCooldownMinutes` (default 10, `0` = no limit) so friends cannot farm each other. Blocking with a shield gives no XP.
+
+### Archer
+XP: only for kills made with an arrow (bow or crossbow). The whole tree costs 10,000 Class XP.
+- Arrow Damage I-V: +20%, +40%, +50%, +60%, +100% arrow damage (total +270%).
+- Arrow Resistance I-III: 10%, 20%, 20% less damage from arrows (total 50%). It gives back that part of the health after a hit, so a hit that kills you outright is not reduced.
+- `ultrange` ability (Ultimate Range): arrows fly faster and therefore much further (`archerRangeMultiplier`, default 1.5). The damage perk is not changed by it.
+- `tracker` ability (Tracker Arrow): for up to 6 seconds your arrow bends towards where you are looking.
+- `poisonarrow` ability (Poisonous Arrow): every arrow you shoot poisons its target (Poison II, 5 seconds), no potion needed.
+
+### Berserker
+XP: only for kills made with an axe (kills with other weapons give nothing). The whole tree costs 10,000 Class XP. The class perks only apply while you hold an axe, except running speed and resistance.
+- Axe Damage I-III: +10%, +20%, +30% damage with axes (total +60%).
+- Swift Feet I-III: +5%, +10%, +15% running speed (total +30%).
+- Toughness I-III: 5%, 10%, 15% less damage from everything (total 30%), given back as health right after a hit (a hit that kills you outright is not reduced).
+- Sharpness VI: +3.5 damage with axes, scaled by how charged the swing was. No enchant book needed, and it adds to a real Sharpness enchant. The item itself is not changed.
+- Fire Aspect: your axe hits set the enemy on fire for 4 seconds. No book needed.
+- `parry` ability: an axe hit makes the enemy lose half of its current health (ignores armor, never more than `parryMaxDamage`, default 40, and only on hostile mobs and players). Cooldown `parryCooldownSeconds` (default 30).
+- `doubleaxes` ability: your axe hits do double damage, as if you swung two axes. You do not need a second axe.
 
 ## Redeem codes
 Players type `/redeem <code>` (not case sensitive). Each player can use a code **once**. Wrong codes are rate limited (5 per minute).
