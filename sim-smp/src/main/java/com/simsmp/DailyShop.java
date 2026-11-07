@@ -219,7 +219,7 @@ public final class DailyShop {
 
     static boolean isShopItem(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data != null && data.contains(SHOP_TAG);
+        return data != null && data.copyTag().contains(SHOP_TAG);
     }
 
     /** True when somebody already bought this offer in the current period. */
