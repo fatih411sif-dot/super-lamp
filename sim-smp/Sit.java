@@ -1,136 +1,112 @@
 package com.simsmp;
 
-import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.core.BlockPos;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.decoration.ArmorStand;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
 /**
- * /sit (everyone): sit down on the spot. A server mod cannot add a real sitting animation, so it does what most
- * servers do: an invisible armor stand is put under the player and the player rides it. Riding makes the game show
- * the sitting pose. Sneak (shift) or /sit again to stand up; the seat then disappears.
- *
- * The seat is never saved with a purpose: leftovers from a crash are removed when they load (they carry a tag).
+ * /sit - seats the player on an invisible, invulnerable armor stand. Sneak (or /sit again) to stand up.
+ * The stand is removed again when the player stands up or disconnects.
  */
 final class Sit {
-    private Sit() {}
+   /** How far below the player's feet the seat is placed. Raise it to sit lower, lower it to sit higher. */
+   private static final double SEAT_DROP = 0.8;
+   private static final Map<UUID, Seat> seats = new HashMap<>();
 
-    private static final String TAG = "sim_smp_seat";
+   private record Seat(ArmorStand stand, double x, double y, double z) {
+   }
 
-    /** Who sits on which seat. */
-    private static final Map<UUID, ArmorStand> seats = new HashMap<>();
-    /** UUIDs of the seats in use, so a seat that is NOT in use (left over from a crash) can be recognised. */
-    private static final Set<UUID> activeSeats = new HashSet<>();
-    /** Old seats found while loading, removed on the next tick (an entity should not be removed while it loads). */
-    private static final List<Entity> leftovers = new ArrayList<>();
+   private Sit() {
+   }
 
-    static void register(CommandDispatcher<CommandSourceStack> d, SimConfig cfg) {
-        d.register(Commands.literal("sit").executes(ctx -> {
-            ServerPlayer p = ctx.getSource().getPlayerOrException();
-            toggle(p, cfg);
+   static boolean isSitting(ServerPlayer p) {
+      return seats.containsKey(p.getUUID());
+   }
+
+   /** True for a seat stand this session is still using. */
+   static boolean isTracked(Entity e) {
+      for (Seat s : seats.values()) {
+         if (s.stand == e) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   static int toggle(ServerPlayer p) {
+      if (isSitting(p)) {
+         p.stopRiding();
+         return 1;
+      } else if (p.isSpectator() || !p.isAlive()) {
+         Msg.err(p, "You can't sit right now.");
+         return 0;
+      } else if (p.isPassenger()) {
+         Msg.err(p, "You are already riding something.");
+         return 0;
+      } else if (p.isInWater() || p.isInLava() || p.getAbilities().flying) {
+         Msg.err(p, "You can only sit on solid ground.");
+         return 0;
+      } else if (!p.onGround()) {
+         Msg.err(p, "Stand on the ground to sit.");
+         return 0;
+      } else {
+         ServerLevel level = p.level();
+         ArmorStand stand = new ArmorStand(EntityTypes.ARMOR_STAND, level);
+         stand.setPos(p.getX(), p.getY() - SEAT_DROP, p.getZ());
+         stand.setYRot(p.getYRot());
+         stand.setInvisible(true);
+         stand.setNoGravity(true);
+         seats.put(p.getUUID(), new Seat(stand, p.getX(), p.getY(), p.getZ()));
+         level.addFreshEntity(stand);
+         if (!p.startRiding(stand)) {
+            seats.remove(p.getUUID());
+            stand.discard();
+            Msg.err(p, "Could not sit here.");
+            return 0;
+         } else {
+            Msg.info(p, "You are sitting. Sneak to stand up.");
             return 1;
-        }));
-    }
+         }
+      }
+   }
 
-    private static void toggle(ServerPlayer p, SimConfig cfg) {
-        UUID id = p.getUUID();
-        if (seats.containsKey(id)) {
-            ArmorStand seat = seats.get(id);
-            p.stopRiding();
-            removeSeat(id, seat);
-            Msg.info(p, "You stood up.");
-            return;
-        }
-
-        if (p.isPassenger()) {
-            Msg.err(p, "You can't sit while you are riding something.");
-            return;
-        }
-        if (p.isSpectator() || p.isSleeping() || p.getAbilities().flying) {
-            Msg.err(p, "You can't sit right now.");
-            return;
-        }
-        if (p.isInWater() || p.isInLava()) {
-            Msg.err(p, "You can't sit in liquid.");
-            return;
-        }
-        if (!(p.level() instanceof ServerLevel level)) return;
-        if (level.getBlockState(BlockPos.containing(p.getX(), p.getY() - 0.2, p.getZ())).isAir()) {
-            Msg.err(p, "You need solid ground to sit on.");
-            return;
-        }
-
-        ArmorStand seat = new ArmorStand(level, p.getX(), p.getY() + cfg.sitHeightOffset, p.getZ());
-        seat.setInvisible(true);
-        seat.setNoGravity(true);
-        seat.setInvulnerable(true);
-        seat.addTag(TAG);
-        seats.put(id, seat);
-        activeSeats.add(seat.getUUID()); // before the entity is added, so loading it does not count as a leftover
-        level.addFreshEntity(seat);
-
-        if (!p.startRiding(seat)) {
-            removeSeat(id, seat);
-            Msg.err(p, "You can't sit here.");
-            return;
-        }
-        Msg.ok(p, "You are sitting. Sneak (shift) or type /sit to stand up.");
-    }
-
-    private static void removeSeat(UUID player, ArmorStand seat) {
-        seats.remove(player);
-        activeSeats.remove(seat.getUUID());
-        seat.discard();
-    }
-
-    /** Called every server tick: removes the seat of everybody who stood up, left the game, or died. */
-    static void tick(MinecraftServer server) {
-        if (!leftovers.isEmpty()) {
-            for (Entity e : leftovers) e.discard();
-            leftovers.clear();
-        }
-        if (seats.isEmpty()) return;
-
-        Iterator<Map.Entry<UUID, ArmorStand>> it = seats.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<UUID, ArmorStand> entry = it.next();
-            ServerPlayer p = server.getPlayerList().getPlayer(entry.getKey());
-            ArmorStand seat = entry.getValue();
-            if (p == null || !p.isAlive() || seat.isRemoved() || p.getVehicle() != seat) {
-                activeSeats.remove(seat.getUUID());
-                seat.discard();
-                it.remove();
+   /** Call every server tick: removes stands whose rider got off and puts the rider back on top of the ground. */
+   static void tick(MinecraftServer server) {
+      if (!seats.isEmpty()) {
+         for (UUID id : new ArrayList<>(seats.keySet())) {
+            Seat seat = seats.get(id);
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            if (p == null || !p.isAlive()) {
+               seat.stand.discard();
+               seats.remove(id);
+            } else if (!seat.stand.isAlive() || p.getVehicle() != seat.stand) {
+               seat.stand.discard();
+               seats.remove(id);
+               p.connection.teleport(seat.x, seat.y, seat.z, p.getYRot(), p.getXRot());
             }
-        }
-    }
+         }
+      }
+   }
 
-    /** A player left the game while sitting. */
-    static void forget(ServerPlayer p) {
-        ArmorStand seat = seats.get(p.getUUID());
-        if (seat != null) {
-            p.stopRiding();
-            removeSeat(p.getUUID(), seat);
-        }
-    }
+   /** Player disconnected. */
+   static void stop(ServerPlayer p) {
+      Seat seat = seats.remove(p.getUUID());
+      if (seat != null) {
+         p.stopRiding();
+         seat.stand.discard();
+      }
+   }
 
-    /** Called for every entity that loads (see ServerEntityEvents.ENTITY_LOAD): finds seats left over from a crash. */
-    static void onEntityLoad(Entity entity) {
-        if (entity instanceof ArmorStand && entity.getTags().contains(TAG) && !activeSeats.contains(entity.getUUID())) {
-            leftovers.add(entity);
-        }
-    }
+   static List<UUID> sitters() {
+      return new ArrayList<>(seats.keySet());
+   }
 }
