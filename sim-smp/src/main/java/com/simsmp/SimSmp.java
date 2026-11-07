@@ -3,6 +3,7 @@ package com.simsmp;
 import java.nio.file.Path;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityCombatEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.ServerStopping;
@@ -50,6 +51,7 @@ public class SimSmp implements ModInitializer {
          ClassCommands.register(dispatcher, classes, cfg);
          ExtraCommands.register(dispatcher, ranks);
       });
+      ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
       PlayerBlockBreakEvents.AFTER.register((After)(level, player, pos, state, blockEntity) -> {
          if (player instanceof ServerPlayer sp) {
@@ -70,12 +72,10 @@ public class SimSmp implements ModInitializer {
          trades.playerLeft(player);
          sidebar.forget(player);
          ClassEffects.forget(player);
-         Sit.stop(player);
       });
       int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
       ServerTickEvents.END_SERVER_TICK.register((EndTick)server -> {
          this.tickCounter++;
-         Sit.tick(server);
          GachaMenu.tickAll();
          if (this.tickCounter % 20 == 0) {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {

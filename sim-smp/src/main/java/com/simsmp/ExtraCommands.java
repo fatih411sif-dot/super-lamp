@@ -20,15 +20,12 @@ import net.minecraft.server.permissions.PermissionCheck.Require;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 
-/** /sit, /rank and /jumpscare. */
+/** /rank and /jumpscare. */
 final class ExtraCommands {
    private ExtraCommands() {
    }
 
    static void register(CommandDispatcher<CommandSourceStack> d, RankManager ranks) {
-      // ---- /sit (everyone) ----
-      d.register((LiteralArgumentBuilder)Commands.literal("sit").executes(ctx -> Sit.toggle(((CommandSourceStack)ctx.getSource()).getPlayerOrException())));
-
       // ---- /rank ----
       List<String> colorNames = RankManager.colorNames();
 
