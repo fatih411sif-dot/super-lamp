@@ -1,0 +1,39 @@
+--- /tmp/claude-0/-home-claude/9f34d32f-36dd-5776-9a11-e5e0f70a8c2d/scratchpad/src/com/simsmp/ClassCommands.java	2026-11-07 20:42:48.216345628 +0700
++++ work/com/simsmp/ClassCommands.java	2026-11-07 20:45:19.120338851 +0700
+@@ -127,9 +127,36 @@
+                      }
+                   })))
+             )
++            .then(
++               Commands.literal("reset")
++                  .then(Commands.argument("player", EntityArgument.player()).executes(ctx -> resetClass(ctx, classes)))
++            )
++      );
++      // /class reset <player>  - same thing, OP only
++      d.register(
++         (LiteralArgumentBuilder)Commands.literal("class")
++            .then(
++               ((LiteralArgumentBuilder)Commands.literal("reset").requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER))))
++                  .then(Commands.argument("player", EntityArgument.player()).executes(ctx -> resetClass(ctx, classes)))
++            )
+       );
+    }
+ 
++   private static int resetClass(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx, ClassManager classes) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
++      ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
++      boolean had = classes.resetPlayer(target.getUUID());
++      ClassEffects.forget(target);
++      classes.save();
++      if (!had) {
++         ((CommandSourceStack)ctx.getSource()).sendFailure(Component.literal(Msg.name(target) + " has no class data to reset."));
++         return 0;
++      } else {
++         ((CommandSourceStack)ctx.getSource()).sendSuccess(() -> Component.literal("Reset all class data of " + Msg.name(target) + "."), true);
++         Msg.info(target, "An admin reset your classes. Use /class to choose again.");
++         return 1;
++      }
++   }
++
+    static String sidebarText(ClassManager classes, ServerPlayer p) {
+       String active = classes.active(p.getUUID());
+       ClassDefs.ClassDef def = ClassDefs.get(active);
