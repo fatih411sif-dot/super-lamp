@@ -46,6 +46,8 @@ public final class ClassManager {
         public Map<String, ClassData> classes = new HashMap<>();
         /** Abilities the player switched on with /ability (they only work while the class is equipped). */
         public List<String> abilities = new ArrayList<>();
+        /** The potion effect the Mage's weapon applies right now ("" = none). */
+        public String mageEffect = "";
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -78,6 +80,7 @@ public final class ClassManager {
                         if (v.active == null) v.active = "";
                         if (v.classes == null) v.classes = new HashMap<>();
                         if (v.abilities == null) v.abilities = new ArrayList<>();
+                        if (v.mageEffect == null) v.mageEffect = "";
                         v.classes.values().removeIf(c -> c == null);
                         v.classes.values().forEach(c -> {
                             if (c.skills == null) c.skills = new ArrayList<>();
@@ -345,6 +348,42 @@ public final class ClassManager {
         List<String> list = data(id).abilities;
         list.remove(name);
         if (on) list.add(name);
+        dirty = true;
+        return null;
+    }
+
+    // ------------------------------------------------------------------ Mage effect (/ability mage <effect>)
+
+    /** The effect the Mage's weapon applies right now, or "" for none. */
+    public synchronized String mageEffect(UUID id) {
+        return data(id).mageEffect;
+    }
+
+    /** The potion-effect skills of the Mage that this player has unlocked. */
+    public synchronized List<ClassDefs.Skill> unlockedMageEffects(UUID id) {
+        List<ClassDefs.Skill> out = new ArrayList<>();
+        ClassDefs.ClassDef def = ClassDefs.get("mage");
+        if (def == null) return out;
+        for (ClassDefs.Skill s : def.skills()) {
+            if (ClassDefs.EFFECT.equals(s.perk()) && hasSkill(id, "mage", s.id())) out.add(s);
+        }
+        return out;
+    }
+
+    /** @return an error text, or null when it worked. "off" switches the effect off. */
+    public synchronized String setMageEffect(UUID id, String name) {
+        PlayerData d = data(id);
+        if (!"mage".equals(d.active)) return "Equip the Mage class first with /class.";
+        if (name.equals("off")) {
+            d.mageEffect = "";
+            dirty = true;
+            return null;
+        }
+        ClassDefs.ClassDef def = ClassDefs.get("mage");
+        ClassDefs.Skill s = def == null ? null : def.skill(name);
+        if (s == null || !ClassDefs.EFFECT.equals(s.perk())) return "Unknown effect '" + name + "'. Type /ability to see yours.";
+        if (!hasSkill(id, "mage", name)) return "You have not unlocked " + s.name() + " yet.";
+        d.mageEffect = name;
         dirty = true;
         return null;
     }

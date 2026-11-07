@@ -56,14 +56,32 @@ final class ClassCommands {
             return SharedSuggestionProvider.suggest(
                     classes.unlockedAbilities(p.getUUID()).stream().map(ClassDefs.Skill::id).toList(), builder);
         };
+        SuggestionProvider<CommandSourceStack> mageEffects = (ctx, builder) -> {
+            ServerPlayer p = ctx.getSource().getPlayerOrException();
+            List<String> names = new java.util.ArrayList<>(
+                    classes.unlockedMageEffects(p.getUUID()).stream().map(ClassDefs.Skill::id).toList());
+            names.add("off");
+            return SharedSuggestionProvider.suggest(names, builder);
+        };
         d.register(Commands.literal("ability")
                 .executes(ctx -> {
                     ServerPlayer p = ctx.getSource().getPlayerOrException();
                     List<ClassDefs.Skill> list = classes.unlockedAbilities(p.getUUID());
-                    if (list.isEmpty()) {
+                    List<ClassDefs.Skill> effects = classes.unlockedMageEffects(p.getUUID());
+                    boolean isMage = "mage".equals(classes.active(p.getUUID()));
+                    if (list.isEmpty() && !(isMage && !effects.isEmpty())) {
                         Msg.info(p, "You have no abilities yet. Unlock them in the skill tree with /class.");
                         return 0;
                     }
+                    if (isMage && !effects.isEmpty()) {
+                        String current = classes.mageEffect(p.getUUID());
+                        Msg.info(p, "Mage effect: " + (current.isEmpty() ? "off" : current)
+                                + "  (choose with /ability mage <effect>, or /ability mage off)");
+                        p.sendSystemMessage(Component.literal(" - unlocked: "
+                                + String.join(", ", effects.stream().map(ClassDefs.Skill::id).toList()))
+                                .withStyle(ChatFormatting.GRAY));
+                    }
+                    if (list.isEmpty()) return 1;
                     Msg.info(p, "Your abilities (switch with /ability <name> <true|false>):");
                     for (ClassDefs.Skill s : list) {
                         boolean on = classes.abilitySwitchedOn(p.getUUID(), s.id());
@@ -72,6 +90,20 @@ final class ClassCommands {
                     }
                     return 1;
                 })
+                .then(Commands.literal("mage")
+                        .then(Commands.argument("effect", StringArgumentType.word()).suggests(mageEffects)
+                                .executes(ctx -> {
+                                    ServerPlayer p = ctx.getSource().getPlayerOrException();
+                                    String name = StringArgumentType.getString(ctx, "effect").toLowerCase();
+                                    String error = classes.setMageEffect(p.getUUID(), name);
+                                    if (error != null) {
+                                        Msg.err(p, error);
+                                        return 0;
+                                    }
+                                    Msg.ok(p, name.equals("off") ? "Your weapon no longer applies an effect."
+                                            : "Your weapon hits now apply " + name + ".");
+                                    return 1;
+                                })))
                 .then(Commands.argument("name", StringArgumentType.word()).suggests(abilityNames)
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                                 .executes(ctx -> {

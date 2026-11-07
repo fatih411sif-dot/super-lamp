@@ -42,6 +42,12 @@ final class ClassDefs {
     static final String SHARP = "sharp";
     /** Server-side "Fire Aspect" perk: value = seconds the victim burns. */
     static final String FIRE = "fire";
+    /** Mage: unlocks one potion effect for the weapon. The skill id is the effect name ("poison", "slowness", ...). */
+    static final String EFFECT = "effect";
+    /** Mage: +value seconds on the potion effect given to enemies (base is 4 seconds). */
+    static final String POTENCY_TIME = "potencytime";
+    /** Mage: +value levels on the potion effect (0 = level I, 1 = level II, never more). */
+    static final String POTENCY_LEVEL = "potencylevel";
     static final String ABILITY = "ability";
 
     enum Category {
@@ -212,8 +218,49 @@ final class ClassDefs {
                 s("doubleaxes", "Double Axes", "Ability: your axe hits do double damage, as if you swung two axes (no second axe needed). Use /ability doubleaxes true", Items.NETHERITE_AXE, "dmg3", 1850, 12, 4, 5, ABILITY, 0)
         );
         out.add(new ClassDef("berserker", "Berserker", Category.COMBAT, Items.DIAMOND_AXE, berserker, Set.of()));
-        out.add(new ClassDef("warrior", "Warrior", Category.COMBAT, Items.IRON_SWORD, List.of(), Set.of()));
-        out.add(new ClassDef("mage", "Mage", Category.COMBAT, Items.BLAZE_ROD, List.of(), Set.of()));
+        // ---- Warrior (swords and spears). Total cost of all skills = 10,000 Class XP.
+        List<Skill> warrior = List.of(
+                s("dmg1", "Blade Damage I", "+10% damage with swords and spears (adds up)", Items.IRON_SWORD, null, 100, 1, 0, 4, DAMAGE, 10),
+                s("run1", "Swift Feet I", "+5% running speed (adds up)", Items.LEATHER_BOOTS, "dmg1", 150, 3, 1, 2, RUNSPEED, 5),
+                s("dmg2", "Blade Damage II", "+20% damage with swords and spears (adds up)", Items.IRON_SWORD, "dmg1", 300, 3, 1, 4, DAMAGE, 20),
+                s("res1", "Toughness I", "5% less damage from everything (adds up)", Items.IRON_CHESTPLATE, "dmg1", 300, 3, 1, 6, RESIST, 5),
+                s("run2", "Swift Feet II", "+10% running speed (adds up)", Items.GOLDEN_BOOTS, "run1", 400, 6, 2, 1, RUNSPEED, 10),
+                s("impale", "Impale", "Ability: a sword hit makes the enemy lose half of its current health and slows it down. 30 second cooldown. Use /ability impale true", Items.IRON_SWORD, "dmg2", 1000, 6, 2, 3, ABILITY, 0),
+                s("dmg3", "Blade Damage III", "+30% damage with swords and spears (adds up)", Items.DIAMOND_SWORD, "dmg2", 600, 6, 2, 5, DAMAGE, 30),
+                s("res2", "Toughness II", "10% less damage from everything (adds up)", Items.DIAMOND_CHESTPLATE, "res1", 500, 6, 2, 7, RESIST, 10),
+                s("run3", "Swift Feet III", "+15% running speed (adds up)", Items.DIAMOND_BOOTS, "run2", 800, 9, 3, 1, RUNSPEED, 15),
+                s("sharp", "Sharpness VI", "+3.5 damage with swords and spears, like a Sharpness VI enchantment (no book needed, adds to a real Sharpness enchant)", Items.ENCHANTED_BOOK, "impale", 1200, 9, 3, 3, SHARP, 6),
+                s("doubleswords", "Double Swords", "Ability: your sword hits do double damage, as if you swung two swords (no second sword needed). Use /ability doubleswords true", Items.NETHERITE_SWORD, "dmg3", 1300, 9, 3, 5, ABILITY, 0),
+                s("res3", "Toughness III", "15% less damage from everything (adds up)", Items.NETHERITE_CHESTPLATE, "res2", 900, 9, 3, 7, RESIST, 15),
+                s("fire", "Fire Aspect", "Your sword and spear hits set the enemy on fire for 4 seconds (no book needed)", Items.FLINT_AND_STEEL, "sharp", 900, 12, 4, 3, FIRE, 4),
+                s("charge", "Charge", "Ability: right-click with a spear to dash in the direction you look. The first enemy you hit takes double damage and is slowed. Use /ability charge true", Items.TRIDENT, "doubleswords", 1550, 12, 4, 5, ABILITY, 0)
+        );
+        out.add(new ClassDef("warrior", "Warrior", Category.COMBAT, Items.IRON_SWORD, warrior, Set.of()));
+        // ---- Mage (potion effects on any weapon). Total cost of all skills = 10,000 Class XP.
+        List<Skill> mage = List.of(
+                s("slowness", "Slowness Spell", "Your weapon hits slow the enemy. Pick it with /ability mage slowness", Items.COBWEB, null, 100, 1, 0, 2, EFFECT, 0),
+                s("dmg1", "Spell Damage I", "+10% damage with melee weapons (adds up)", Items.BLAZE_ROD, null, 100, 1, 0, 6, DAMAGE, 10),
+                s("res1", "Warding I", "5% less damage from everything (adds up)", Items.IRON_CHESTPLATE, "slowness", 300, 3, 1, 0, RESIST, 5),
+                s("poison", "Poison Spell", "Your weapon hits poison the enemy. Pick it with /ability mage poison", Items.SPIDER_EYE, "slowness", 300, 3, 1, 2, EFFECT, 0),
+                s("ptime1", "Spell Duration I", "Your potion effects last 2 seconds longer (adds up)", Items.CLOCK, "slowness", 250, 3, 1, 4, POTENCY_TIME, 2),
+                s("dmg2", "Spell Damage II", "+20% damage with melee weapons (adds up)", Items.BLAZE_ROD, "dmg1", 300, 3, 1, 6, DAMAGE, 20),
+                s("run1", "Swift Feet I", "+5% running speed (adds up)", Items.LEATHER_BOOTS, "dmg1", 150, 3, 1, 8, RUNSPEED, 5),
+                s("res2", "Warding II", "10% less damage from everything (adds up)", Items.DIAMOND_CHESTPLATE, "res1", 400, 6, 2, 0, RESIST, 10),
+                s("weakness", "Weakness Spell", "Your weapon hits weaken the enemy. Pick it with /ability mage weakness", Items.FERMENTED_SPIDER_EYE, "poison", 400, 6, 2, 2, EFFECT, 0),
+                s("ptime2", "Spell Duration II", "Your potion effects last 2 seconds longer (adds up)", Items.CLOCK, "ptime1", 400, 6, 2, 4, POTENCY_TIME, 2),
+                s("dmg3", "Spell Damage III", "+30% damage with melee weapons (adds up)", Items.BLAZE_ROD, "dmg2", 500, 6, 2, 6, DAMAGE, 30),
+                s("run2", "Swift Feet II", "+10% running speed (adds up)", Items.GOLDEN_BOOTS, "run1", 300, 6, 2, 8, RUNSPEED, 10),
+                s("res3", "Warding III", "15% less damage from everything (adds up)", Items.NETHERITE_CHESTPLATE, "res2", 600, 9, 3, 0, RESIST, 15),
+                s("blindness", "Blindness Spell", "Your weapon hits blind the enemy. Pick it with /ability mage blindness", Items.INK_SAC, "weakness", 600, 9, 3, 2, EFFECT, 0),
+                s("ptime3", "Spell Duration III", "Your potion effects last 2 seconds longer (adds up)", Items.CLOCK, "ptime2", 600, 9, 3, 4, POTENCY_TIME, 2),
+                s("sharp", "Sharpness VI", "+3.5 damage with melee weapons, like a Sharpness VI enchantment (no book needed)", Items.ENCHANTED_BOOK, "dmg3", 1000, 9, 3, 6, SHARP, 6),
+                s("run3", "Swift Feet III", "+15% running speed (adds up)", Items.DIAMOND_BOOTS, "run2", 600, 9, 3, 8, RUNSPEED, 15),
+                s("levitation", "Levitation Spell", "Your weapon hits lift the enemy into the air (at most 5 seconds, always level I). Pick it with /ability mage levitation", Items.SHULKER_SHELL, "blindness", 500, 12, 4, 1, EFFECT, 0),
+                s("wither", "Wither Spell", "Your weapon hits wither the enemy. Pick it with /ability mage wither", Items.WITHER_ROSE, "blindness", 900, 12, 4, 3, EFFECT, 0),
+                s("plevel", "Spell Potency", "Your potion effects become level II", Items.BREWING_STAND, "ptime3", 1000, 12, 4, 4, POTENCY_LEVEL, 1),
+                s("fire", "Fire Aspect", "Your melee hits set the enemy on fire for 4 seconds (no book needed)", Items.FLINT_AND_STEEL, "sharp", 700, 12, 4, 6, FIRE, 4)
+        );
+        out.add(new ClassDef("mage", "Mage", Category.COMBAT, Items.BLAZE_ROD, mage, Set.of()));
         return out;
     }
 }

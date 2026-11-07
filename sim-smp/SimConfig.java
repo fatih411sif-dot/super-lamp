@@ -50,6 +50,13 @@ public final class SimConfig {
     public int parryCooldownSeconds = 30;
     /** Berserker's Parry takes half of the target's health, but never more than this (so bosses are not halved). */
     public double parryMaxDamage = 40;
+    /** Warrior's Impale (sword): seconds between uses. It also takes half of the target's health, capped by parryMaxDamage. */
+    public int impaleCooldownSeconds = 30;
+    /** Mage: base length in seconds of the potion effect on the weapon (Spell Duration perks add to it). */
+    public int mageEffectSeconds = 4;
+    /** Warrior's Charge (spear): seconds between uses, and how fast the dash is (blocks per tick). */
+    public int chargeCooldownSeconds = 10;
+    public double chargeSpeed = 1.4;
 
     /** item id (e.g. "minecraft:diamond") -> price per item. Loaded from prices.json. */
     public transient Map<String, Long> prices = new LinkedHashMap<>();

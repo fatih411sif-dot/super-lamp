@@ -72,7 +72,7 @@ Gradle wrapper, then copy this project's `src/` folder plus `build.gradle`/`grad
 - The money is taken when the spin starts. If the window is closed during the spin, the prize is handed over immediately.
 
 ## Classes
-8 classes: Economy (Miner, Farmer, Lumberjack, Hunter) and Combat (Archer, Berserker, Warrior, Mage). **Miner**, **Farmer**, **Lumberjack**, **Hunter**, **Archer** and **Berserker** have a skill tree for now.
+8 classes: Economy (Miner, Farmer, Lumberjack, Hunter) and Combat (Archer, Berserker, Warrior, Mage). All 8 classes have a skill tree.
 - `/class` opens the GUI. First choose **2 Economy + 2 Combat** classes (click to pick), then click one of them twice to equip it. Only ONE class is equipped at a time; every class keeps its own level, XP and skills.
 - Switching the equipped class has a cooldown (`classSwitchMinutes`, default 10). To swap one of your 4 chosen classes use `/class replace <old> <new>`: costs `classChangeFee` (default 10,000) and the old class goes back to level 0.
 - **Class XP** is shown in the sidebar. It is also the money for skills. Level comes from total XP earned, so buying skills never lowers it.
@@ -127,6 +127,23 @@ XP: only for kills made with an axe (kills with other weapons give nothing). The
 - Fire Aspect: your axe hits set the enemy on fire for 4 seconds. No book needed.
 - `parry` ability: an axe hit makes the enemy lose half of its current health (ignores armor, never more than `parryMaxDamage`, default 40, and only on hostile mobs and players). Cooldown `parryCooldownSeconds` (default 30).
 - `doubleaxes` ability: your axe hits do double damage, as if you swung two axes. You do not need a second axe.
+
+### Warrior
+XP: only for kills made with a sword or a spear. The whole tree costs 10,000 Class XP. Class perks apply while you hold a sword or spear, except running speed and resistance, which always apply.
+- Blade Damage I-III: +10%, +20%, +30% damage with swords and spears (total +60%).
+- Swift Feet I-III: +5%, +10%, +15% running speed (total +30%).
+- Toughness I-III: 5%, 10%, 15% less damage from everything (total 30%), given back as health right after a hit (a hit that kills you outright is not reduced).
+- Sharpness VI: +3.5 damage with swords and spears, scaled by how charged the swing was. No enchant book needed. Fire Aspect: your hits set the enemy on fire for 4 seconds.
+- `impale` ability (sword): a hit makes the enemy lose half of its current health (ignores armor, never more than `parryMaxDamage`, only on hostile mobs and players) and slows it for 5 seconds. Cooldown `impaleCooldownSeconds` (default 30).
+- `doubleswords` ability: your sword hits do double damage, as if you swung two swords. You do not need a second sword.
+- `charge` ability (spear): right-click with a spear to dash in the direction you look. The first enemy you hit takes double damage and is slowed. Cooldown `chargeCooldownSeconds` (default 10), dash speed `chargeSpeed` (default 1.4). A spear is any item whose name ends in `_spear`.
+
+### Mage
+XP: for kills made with any weapon in hand (not bare hands) or with an arrow. The whole tree costs 10,000 Class XP.
+- **Potion effects on your weapon:** every effect is its own skill: Slowness (level 1), Poison, Weakness, Blindness, Levitation, Wither. You choose ONE effect at a time with `/ability mage <effect>` (for example `/ability mage poison`), and switch it off with `/ability mage off`. `/ability` shows the effect you picked and the ones you have unlocked.
+- Enemies hit by your weapon (or by an arrow you shot) get that effect. It lasts `mageEffectSeconds` (default 4) plus 2 seconds for each Spell Duration skill (up to 10 seconds), and becomes level II with Spell Potency. Levitation is always level I and at most 5 seconds.
+- Spell Damage I-III: +10%, +20%, +30% damage with melee weapons (total +60%). Swift Feet I-III: +5%, +10%, +15% running speed (total +30%). Warding I-III: 5%, 10%, 15% less damage from everything (total 30%).
+- Sharpness VI (+3.5 damage, no book) and Fire Aspect (4 seconds of fire).
 
 ## Redeem codes
 Players type `/redeem <code>` (not case sensitive). Each player can use a code **once**. Wrong codes are rate limited (5 per minute).

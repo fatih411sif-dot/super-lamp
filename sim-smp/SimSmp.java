@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -67,6 +68,9 @@ public class SimSmp implements ModInitializer {
         UseBlockCallback.EVENT.register((player, level, hand, hitResult) ->
                 ClassEffects.onUseBlock(player, level, hand, hitResult, classes, cfg));
 
+        // Warrior: Charge (right-click with a spear)
+        UseItemCallback.EVENT.register((player, level, hand) -> ClassEffects.onUseItem(player, level, hand, classes, cfg));
+
         // Hunter: XP for hunting farm animals, Lucky Drops and Auto Cook
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> ClassEffects.onEntityDeath(entity, source, classes, cfg));
 
@@ -95,6 +99,7 @@ public class SimSmp implements ModInitializer {
             tickCounter++;
             GachaMenu.tickAll();
             ClassEffects.tickArrows();
+            ClassEffects.tickCharges(server, classes, cfg);
             if (tickCounter % 20 == 0) {
                 for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                     sidebar.update(server, p);

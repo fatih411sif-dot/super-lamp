@@ -22,6 +22,8 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -92,7 +94,8 @@ final class ClassEffects {
 
         // Berserker: running speed (extra percent of the normal walking speed)
         setModifier(p, Attributes.MOVEMENT_SPEED, RUN_ID,
-                "berserker".equals(active) ? classes.perkTotal(id, ClassDefs.RUNSPEED) / 100.0 : 0,
+                ("berserker".equals(active) || "warrior".equals(active) || "mage".equals(active))
+                        ? classes.perkTotal(id, ClassDefs.RUNSPEED) / 100.0 : 0,
                 AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
 
         if (miner && classes.abilityUsable(id, "nightvision")) {
@@ -172,6 +175,8 @@ final class ClassEffects {
         instantTreeReady.remove(p.getUUID());
         parryReady.remove(p.getUUID());
         healthBefore.remove(p.getUUID());
+        chargeReady.remove(p.getUUID());
+        charging.remove(p.getUUID());
     }
 
     // ------------------------------------------------------------------ block breaking
@@ -471,7 +476,15 @@ final class ClassEffects {
     private static boolean weaponMatches(String active, ServerPlayer p, DamageSource source) {
         if ("archer".equals(active)) return isArrow(source.getDirectEntity());
         if ("berserker".equals(active)) return source.getDirectEntity() == p && p.getMainHandItem().is(ItemTags.AXES);
-        return false; // the other combat classes come later
+        if ("warrior".equals(active)) {
+            return source.getDirectEntity() == p
+                    && (p.getMainHandItem().is(ItemTags.SWORDS) || isSpear(p.getMainHandItem()));
+        }
+        if ("mage".equals(active)) {
+            // any weapon in hand (not bare hands), or an arrow the mage shot
+            return (source.getDirectEntity() == p && !p.getMainHandItem().isEmpty()) || isArrow(source.getDirectEntity());
+        }
+        return false;
     }
 
     private static boolean isArrow(Entity e) {
@@ -482,6 +495,8 @@ final class ClassEffects {
 
     private static final String BOOST_TAG = "sim_smp_arrow";
     private static final String POISON_TAG = "sim_smp_poison";
+    /** Arrows shot by a Mage carry this tag followed by the chosen effect name, e.g. "sim_smp_mage_poison". */
+    private static final String MAGE_TAG = "sim_smp_mage_";
     /** Arrows that are currently steered by Tracker Arrow. */
     private static final List<AbstractArrow> trackerArrows = new ArrayList<>();
 
@@ -495,6 +510,13 @@ final class ClassEffects {
         if (!(arrow.getOwner() instanceof ServerPlayer p)) return;
         if (entity.getTags().contains(BOOST_TAG)) return;
         UUID id = p.getUUID();
+        if ("mage".equals(classes.active(id))) {
+            // Mage: remember which effect was chosen at the moment of the shot
+            entity.addTag(BOOST_TAG);
+            String effect = classes.mageEffect(id);
+            if (!effect.isEmpty() && classes.hasSkill(id, "mage", effect)) entity.addTag(MAGE_TAG + effect);
+            return;
+        }
         if (!"archer".equals(classes.active(id))) return;
         entity.addTag(BOOST_TAG);
 
@@ -544,7 +566,7 @@ final class ClassEffects {
     static boolean allowDamage(LivingEntity entity, DamageSource source, float amount, ClassManager classes) {
         if (entity instanceof ServerPlayer p) {
             String active = classes.active(p.getUUID());
-            if ("berserker".equals(active) || "archer".equals(active)) {
+            if ("berserker".equals(active) || "warrior".equals(active) || "mage".equals(active) || "archer".equals(active)) {
                 healthBefore.put(p.getUUID(), p.getHealth() + p.getAbsorptionAmount());
             }
         }
@@ -561,9 +583,18 @@ final class ClassEffects {
         if (!blocked && direct != null && direct.getTags().contains(POISON_TAG)) {
             entity.addEffect(new MobEffectInstance(MobEffects.POISON, 100, 1));
         }
+        if (!blocked && direct instanceof AbstractArrow arrow && arrow.getOwner() instanceof ServerPlayer shooter
+                && shooter != entity && "mage".equals(classes.active(shooter.getUUID()))) {
+            for (String tag : direct.getTags()) {
+                if (tag.startsWith(MAGE_TAG)) {
+                    applyMageEffect(shooter, entity, tag.substring(MAGE_TAG.length()), classes, cfg);
+                    break;
+                }
+            }
+        }
         if (entity instanceof ServerPlayer victim) resist(victim, source, classes);
         if (!blocked && !applyingExtra && source.getEntity() instanceof ServerPlayer attacker && direct == attacker) {
-            berserkerHit(attacker, entity, source, damageTaken, classes, cfg);
+            meleeHit(attacker, entity, source, damageTaken, classes, cfg);
         }
     }
 
@@ -577,7 +608,7 @@ final class ClassEffects {
         UUID id = victim.getUUID();
         String active = classes.active(id);
         int resist = 0;
-        if ("berserker".equals(active)) resist = classes.perkTotal(id, ClassDefs.RESIST);
+        if ("berserker".equals(active) || "warrior".equals(active) || "mage".equals(active)) resist = classes.perkTotal(id, ClassDefs.RESIST);
         else if ("archer".equals(active) && isArrow(source.getDirectEntity())) resist = classes.perkTotal(id, ClassDefs.ARROW_RESIST);
         resist = Math.min(90, resist);
         if (resist <= 0) return;
@@ -585,22 +616,58 @@ final class ClassEffects {
         if (lost > 0) victim.heal(lost * resist / 100f);
     }
 
-    // ------------------------------------------------------------------ Berserker
+    // ------------------------------------------------------------------ Berserker and Warrior (melee)
+
+    /** Mob effects are looked up by their registry name, so this does not depend on the Java constant names. */
+    private static final Map<String, Holder<MobEffect>> effectCache = new HashMap<>();
+
+    private static Holder<MobEffect> effectByName(String path) {
+        Holder<MobEffect> cached = effectCache.get(path);
+        if (cached != null) return cached;
+        for (MobEffect e : BuiltInRegistries.MOB_EFFECT) {
+            if (BuiltInRegistries.MOB_EFFECT.getKey(e).getPath().equals(path)) {
+                Holder<MobEffect> holder = BuiltInRegistries.MOB_EFFECT.wrapAsHolder(e);
+                effectCache.put(path, holder);
+                return holder;
+            }
+        }
+        return null;
+    }
+
+    private static void slow(LivingEntity target, int ticks, int level) {
+        Holder<MobEffect> slowness = effectByName("slowness");
+        if (slowness != null) target.addEffect(new MobEffectInstance(slowness, ticks, level));
+    }
+
+    static boolean isSpear(ItemStack stack) {
+        return !stack.isEmpty() && BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("_spear");
+    }
 
     /**
-     * Berserker axe hit: damage perks and Double Axes (extra damage on top of the vanilla hit), the Sharpness VI perk
-     * (scaled by how charged the swing was, like the real enchant), Fire Aspect, and Parry.
+     * Melee hit of a Berserker (axe) or Warrior (sword or spear): damage perks and the double-weapon ability
+     * (extra damage on top of the vanilla hit), the Sharpness VI perk (scaled by how charged the swing was, like the
+     * real enchant), Fire Aspect, and Parry (axe) / Impale (sword, also slows).
      */
-    private static void berserkerHit(ServerPlayer attacker, LivingEntity target, DamageSource source, float damageTaken,
-                                     ClassManager classes, SimConfig cfg) {
+    private static void meleeHit(ServerPlayer attacker, LivingEntity target, DamageSource source, float damageTaken,
+                                 ClassManager classes, SimConfig cfg) {
         UUID id = attacker.getUUID();
-        if (!"berserker".equals(classes.active(id)) || target == attacker) return;
-        if (!attacker.getMainHandItem().is(ItemTags.AXES)) return;
+        String active = classes.active(id);
+        boolean berserker = "berserker".equals(active);
+        boolean warrior = "warrior".equals(active);
+        boolean mage = "mage".equals(active);
+        if ((!berserker && !warrior && !mage) || target == attacker) return;
+        ItemStack held = attacker.getMainHandItem();
+        boolean axe = berserker && held.is(ItemTags.AXES);
+        boolean sword = warrior && held.is(ItemTags.SWORDS);
+        boolean spear = warrior && isSpear(held);
+        boolean anyWeapon = mage && !held.isEmpty(); // the Mage can use any weapon
+        if (!axe && !sword && !spear && !anyWeapon) return;
         if (!(attacker.level() instanceof ServerLevel level)) return;
+        boolean doubled = (axe && classes.abilityUsable(id, "doubleaxes")) || (sword && classes.abilityUsable(id, "doubleswords"));
 
         int sharpLevel = classes.perkTotal(id, ClassDefs.SHARP);
         float sharp = sharpLevel > 0 ? (0.5f * sharpLevel + 0.5f) * attacker.getAttackStrengthScale(0.5f) : 0f;
-        double mult = (1.0 + classes.perkTotal(id, ClassDefs.DAMAGE) / 100.0) * (classes.abilityUsable(id, "doubleaxes") ? 2.0 : 1.0);
+        double mult = (1.0 + classes.perkTotal(id, ClassDefs.DAMAGE) / 100.0) * (doubled ? 2.0 : 1.0);
         float extra = (float) ((damageTaken + sharp) * mult - damageTaken);
 
         applyingExtra = true;
@@ -614,21 +681,125 @@ final class ClassEffects {
             int fire = classes.perkTotal(id, ClassDefs.FIRE);
             if (fire > 0) target.igniteForSeconds(fire);
 
-            if (classes.abilityUsable(id, "parry") && (target instanceof Enemy || target instanceof ServerPlayer)) {
+            if (anyWeapon) applyMageEffect(attacker, target, classes.mageEffect(id), classes, cfg);
+
+            String special = axe ? "parry" : sword ? "impale" : null;
+            if (special != null && classes.abilityUsable(id, special) && (target instanceof Enemy || target instanceof ServerPlayer)) {
                 long now = System.currentTimeMillis();
                 Long ready = parryReady.get(id);
                 if (ready == null || ready <= now) {
-                    float half = Math.min(target.getHealth() / 2f, cfg.parryMaxDamage);
+                    float half = Math.min(target.getHealth() / 2f, (float) cfg.parryMaxDamage);
                     if (half >= 0.5f) {
                         target.setHealth(target.getHealth() - half); // a "bleed": ignores armor, can never kill by itself
-                        parryReady.put(id, now + cfg.parryCooldownSeconds * 1000L);
-                        Msg.ok(attacker, "Parry! The enemy lost " + Math.round(half) + " health. Ready again in "
-                                + seconds(cfg.parryCooldownSeconds * 1000L) + ".");
+                        int cooldown = axe ? cfg.parryCooldownSeconds : cfg.impaleCooldownSeconds;
+                        parryReady.put(id, now + cooldown * 1000L);
+                        if (sword) slow(target, 100, 1); // Impale also slows the enemy for 5 seconds
+                        Msg.ok(attacker, (axe ? "Parry" : "Impale") + "! The enemy lost " + Math.round(half)
+                                + " health. Ready again in " + seconds(cooldown * 1000L) + ".");
                     }
                 }
             }
         } finally {
             applyingExtra = false;
+        }
+    }
+
+    // ------------------------------------------------------------------ Mage: potion effect on the weapon
+
+    /**
+     * Gives the target the Mage's chosen potion effect. Duration = mageEffectSeconds (default 4) plus the Spell Duration
+     * perks, level II once Spell Potency is unlocked. The effect name is the registry name ("poison", "slowness", ...).
+     * Levitation is limited to level I and 5 seconds so nobody can be lifted out of the world.
+     */
+    private static void applyMageEffect(ServerPlayer mage, LivingEntity target, String name, ClassManager classes, SimConfig cfg) {
+        if (name == null || name.isEmpty() || target == mage) return;
+        UUID id = mage.getUUID();
+        if (!classes.hasSkill(id, "mage", name)) return; // never apply an effect that is not (or no longer) unlocked
+        Holder<MobEffect> effect = effectByName(name);
+        if (effect == null) return;
+
+        int seconds = cfg.mageEffectSeconds + classes.perkTotal(id, ClassDefs.POTENCY_TIME);
+        int amplifier = Math.min(1, classes.perkTotal(id, ClassDefs.POTENCY_LEVEL));
+        if (name.equals("levitation")) {
+            seconds = Math.min(5, seconds);
+            amplifier = 0;
+        }
+        target.addEffect(new MobEffectInstance(effect, seconds * 20, amplifier));
+    }
+
+    // ------------------------------------------------------------------ Warrior: Charge (spear)
+
+    /** Warrior's Charge: when each player may use it again (millis), and the players that are dashing right now (ticks left). */
+    private static final Map<UUID, Long> chargeReady = new HashMap<>();
+    private static final Map<UUID, Integer> charging = new HashMap<>();
+    private static final int CHARGE_TICKS = 12;
+
+    /**
+     * Charge (see UseItemCallback): right-click with a spear to dash in the direction you are looking. While dashing,
+     * the first enemy in the way takes double damage and is slowed (see tickCharges). Cooldown chargeCooldownSeconds.
+     */
+    static InteractionResult onUseItem(Player player, Level level, InteractionHand hand, ClassManager classes, SimConfig cfg) {
+        if (!(player instanceof ServerPlayer p) || hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
+        UUID id = p.getUUID();
+        if (!"warrior".equals(classes.active(id)) || !classes.abilityUsable(id, "charge")) return InteractionResult.PASS;
+        if (!isSpear(p.getMainHandItem())) return InteractionResult.PASS;
+        if (charging.containsKey(id)) return InteractionResult.PASS;
+
+        long now = System.currentTimeMillis();
+        Long ready = chargeReady.get(id);
+        if (ready != null && ready > now) {
+            Msg.err(p, "Charge is recharging: " + seconds(ready - now) + " left.");
+            return InteractionResult.PASS;
+        }
+        chargeReady.put(id, now + cfg.chargeCooldownSeconds * 1000L);
+        charging.put(id, CHARGE_TICKS);
+        p.setDeltaMovement(p.getLookAngle().normalize().scale(cfg.chargeSpeed));
+        p.hurtMarked = true; // sends the new movement to the player
+        return InteractionResult.PASS; // the spear still does its normal thing
+    }
+
+    /** Once per server tick: keeps every dashing Warrior moving and hits the first enemy in front of them. */
+    static void tickCharges(MinecraftServer server, ClassManager classes, SimConfig cfg) {
+        if (charging.isEmpty()) return;
+        Iterator<Map.Entry<UUID, Integer>> it = charging.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, Integer> entry = it.next();
+            ServerPlayer p = server.getPlayerList().getPlayer(entry.getKey());
+            if (p == null || !p.isAlive() || !(p.level() instanceof ServerLevel level)) {
+                it.remove();
+                continue;
+            }
+            int left = entry.getValue() - 1;
+
+            LivingEntity hit = null;
+            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(1.2),
+                    x -> x != p && x.isAlive())) {
+                if (e instanceof Enemy || e instanceof ServerPlayer) {
+                    hit = e;
+                    break;
+                }
+            }
+            if (hit != null) {
+                UUID id = p.getUUID();
+                double damage = p.getAttributeValue(Attributes.ATTACK_DAMAGE) * 2.0
+                        * (1.0 + classes.perkTotal(id, ClassDefs.DAMAGE) / 100.0);
+                hit.hurtServer(level, p.damageSources().playerAttack(p), (float) damage);
+                slow(hit, 100, 1);
+                int fire = classes.perkTotal(id, ClassDefs.FIRE);
+                if (fire > 0) hit.igniteForSeconds(fire);
+                Msg.ok(p, "Charge! Double damage.");
+                it.remove();
+                continue;
+            }
+            if (left <= 0) {
+                it.remove();
+            } else {
+                entry.setValue(left);
+                // keep the dash going (friction would slow it down) but do not push upwards
+                Vec3 look = p.getLookAngle();
+                p.setDeltaMovement(look.x * cfg.chargeSpeed, Math.min(0.1, p.getDeltaMovement().y), look.z * cfg.chargeSpeed);
+                p.hurtMarked = true;
+            }
         }
     }
 
