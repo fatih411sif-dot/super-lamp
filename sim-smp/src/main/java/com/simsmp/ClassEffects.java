@@ -39,6 +39,9 @@ final class ClassEffects {
    private static final Identifier SPEED_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_mining_speed");
    private static final Identifier EFFICIENCY_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_mining_efficiency");
    private static final Identifier FALL_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_fall_damage");
+   private static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_damage");
+   private static final Identifier ARMOR_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_armor");
+   private static final Identifier MOVE_ID = Identifier.fromNamespaceAndPath("sim_smp", "class_move");
    private static final Set<UUID> nightVision = new HashSet<>();
    private static boolean breakingExtra;
    private static final Map<UUID, Long> instantGrowReady = new HashMap<>();
@@ -60,8 +63,12 @@ final class ClassEffects {
 
       setModifier(p, Attributes.BLOCK_BREAK_SPEED, SPEED_ID, speed, Operation.ADD_MULTIPLIED_BASE);
       setModifier(p, Attributes.MINING_EFFICIENCY, EFFICIENCY_ID, miner ? classes.perkTotal(id, "efficiency") : 0.0, Operation.ADD_VALUE);
-      setModifier(p, Attributes.FALL_DAMAGE_MULTIPLIER, FALL_ID, miner ? -classes.perkTotal(id, "fall") / 100.0 : 0.0, Operation.ADD_MULTIPLIED_BASE);
-      if (miner && classes.abilityUsable(id, "nightvision")) {
+      setModifier(p, Attributes.FALL_DAMAGE_MULTIPLIER, FALL_ID, -classes.perkTotal(id, "fall") / 100.0, Operation.ADD_MULTIPLIED_BASE);
+      // combat / hunter perks (0 for classes that don't have them, which removes the modifier again)
+      setModifier(p, Attributes.ATTACK_DAMAGE, DAMAGE_ID, classes.perkTotal(id, "damage") / 100.0, Operation.ADD_MULTIPLIED_TOTAL);
+      setModifier(p, Attributes.ARMOR, ARMOR_ID, classes.perkTotal(id, "armor"), Operation.ADD_VALUE);
+      setModifier(p, Attributes.MOVEMENT_SPEED, MOVE_ID, classes.perkTotal(id, "move") / 100.0, Operation.ADD_MULTIPLIED_BASE);
+      if (classes.abilityUsable(id, "nightvision")) {
          p.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, false));
          nightVision.add(id);
       } else if (nightVision.remove(id)) {

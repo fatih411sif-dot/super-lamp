@@ -31,6 +31,14 @@ final class ClassDefs {
     /** +value% faster crop growth around the player (extra random ticks). */
     static final String GROWTH = "growth";
     static final String ABILITY = "ability";
+    /** +value% attack damage (applies to the whole hit, weapon included). */
+    static final String DAMAGE = "damage";
+    /** +value armor points. */
+    static final String ARMOR = "armor";
+    /** +value% walking speed. */
+    static final String MOVE = "move";
+    /** +value extra Class XP for every kill that already gives XP. */
+    static final String XPKILL = "xp";
 
     enum Category {
         ECONOMY("Economy"), COMBAT("Combat");
@@ -38,7 +46,10 @@ final class ClassDefs {
         Category(String label) { this.label = label; }
     }
 
-    /** row 0-4 and col 0-8 are the position inside the tree window. */
+    /**
+     * Position inside the tree window. The tree is drawn on a lattice so the resource pack can draw lines between skills:
+     * row is 0, 2 or 4 and col is 0, 2, 4, 6 or 8 (every other slot is left empty for the connecting lines).
+     */
     record Skill(String id, String name, String desc, Item icon, String parent, long cost, int minLevel,
                  int row, int col, boolean active, String perk, int value) {}
 
@@ -73,19 +84,19 @@ final class ClassDefs {
         // ---- Miner. Total cost of all skills = 10,250 Class XP.
         List<Skill> miner = List.of(
                 s("sell1", "Ore Value I", "+10% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, null, 100, 1, 0, 4, SELL, 10),
-                s("eff1", "Mining Speed I", "+10% mining speed (adds up)", Items.GOLDEN_PICKAXE, "sell1", 150, 3, 1, 2, SPEED, 10),
-                s("sell2", "Ore Value II", "+20% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell1", 250, 3, 1, 6, SELL, 20),
-                s("eff2", "Mining Speed II", "+20% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff1", 300, 6, 2, 1, SPEED, 20),
-                s("veinminer", "Vein Miner", "Ability: mining an ore breaks the whole connected vein. Needs a pickaxe. Use /ability veinminer true", Items.RAW_IRON, "eff1", 600, 6, 2, 3, ABILITY, 0),
-                s("sell3", "Ore Value III", "+30% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell2", 450, 6, 2, 6, SELL, 30),
-                s("eff3", "Mining Speed III", "+40% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff2", 600, 9, 3, 1, SPEED, 40),
-                s("nightvision", "Night Vision", "Ability: night vision with no time limit. Use /ability nightvision true", Items.GOLDEN_CARROT, "veinminer", 900, 9, 3, 3, ABILITY, 0),
-                s("fall", "Light Landing", "50% less fall damage", Items.FEATHER, "sell3", 800, 9, 3, 5, FALL, 50),
-                s("sell4", "Ore Value IV", "+50% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell3", 900, 9, 3, 7, SELL, 50),
-                s("eff4", "Mining Speed IV", "+60% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff3", 1000, 12, 4, 1, SPEED, 60),
-                s("mine3x3", "3x3 Mining", "Ability: breaks a 3x3 area at once. Needs a pickaxe. Use /ability mine3x3 true", Items.DIAMOND_PICKAXE, "nightvision", 1500, 12, 4, 3, ABILITY, 0),
-                s("supereff", "Super Efficiency", "Like an extra Efficiency III enchantment on your tool (stacks with everything)", Items.NETHERITE_PICKAXE, "fall", 900, 12, 4, 5, EFFICIENCY, 10),
-                s("sell5", "Ore Value V", "+100% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell4", 1800, 12, 4, 7, SELL, 100)
+                s("eff1", "Mining Speed I", "+10% mining speed (adds up)", Items.GOLDEN_PICKAXE, "sell1", 150, 3, 0, 6, SPEED, 10),
+                s("sell2", "Ore Value II", "+20% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell1", 250, 3, 0, 2, SELL, 20),
+                s("eff2", "Mining Speed II", "+20% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff1", 300, 6, 0, 8, SPEED, 20),
+                s("veinminer", "Vein Miner", "Ability: mining an ore breaks the whole connected vein. Needs a pickaxe. Use /ability veinminer true", Items.RAW_IRON, "eff1", 600, 6, 2, 8, ABILITY, 0),
+                s("sell3", "Ore Value III", "+30% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell2", 450, 6, 0, 0, SELL, 30),
+                s("eff3", "Mining Speed III", "+40% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff2", 600, 9, 2, 6, SPEED, 40),
+                s("nightvision", "Night Vision", "Ability: night vision with no time limit. Use /ability nightvision true", Items.GOLDEN_CARROT, "veinminer", 900, 9, 4, 6, ABILITY, 0),
+                s("fall", "Light Landing", "50% less fall damage", Items.FEATHER, "sell3", 800, 9, 2, 0, FALL, 50),
+                s("sell4", "Ore Value IV", "+50% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell3", 900, 9, 2, 2, SELL, 50),
+                s("eff4", "Mining Speed IV", "+60% mining speed (adds up)", Items.GOLDEN_PICKAXE, "eff3", 1000, 12, 4, 8, SPEED, 60),
+                s("mine3x3", "3x3 Mining", "Ability: breaks a 3x3 area at once. Needs a pickaxe. Use /ability mine3x3 true", Items.DIAMOND_PICKAXE, "nightvision", 1500, 12, 4, 4, ABILITY, 0),
+                s("supereff", "Super Efficiency", "Like an extra Efficiency III enchantment on your tool (stacks with everything)", Items.NETHERITE_PICKAXE, "fall", 900, 12, 4, 2, EFFICIENCY, 10),
+                s("sell5", "Ore Value V", "+100% money for every ore sold with /sell (adds up)", Items.GOLD_INGOT, "sell4", 1800, 12, 4, 0, SELL, 100)
         );
         Set<String> minerSells = Set.of(
                 "minecraft:coal", "minecraft:raw_copper", "minecraft:copper_ingot", "minecraft:raw_iron",
@@ -100,17 +111,17 @@ final class ClassDefs {
 
         // ---- Farmer. Total cost of all skills = 10,150 Class XP.
         List<Skill> farmer = List.of(
-                s("sell1", "Harvest Value I", "+50% money for farm goods sold with /sell (adds up)", Items.EMERALD, null, 100, 1, 0, 4, SELL, 50),
+                s("sell1", "Harvest Value I", "+50% money for farm goods sold with /sell (adds up)", Items.EMERALD, null, 100, 1, 0, 6, SELL, 50),
                 s("growth1", "Fast Growth I", "+20% crop growth speed around you (adds up)", Items.BONE_MEAL, null, 150, 1, 0, 2, GROWTH, 20),
-                s("sell2", "Harvest Value II", "+80% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell1", 300, 3, 1, 6, SELL, 80),
-                s("growth2", "Fast Growth II", "+40% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth1", 300, 3, 1, 1, GROWTH, 40),
-                s("veinharvester", "Vein Harvester", "Ability: harvesting one ripe crop harvests all connected ripe crops on the same level. Use /ability veinharvester true", Items.IRON_HOE, "growth1", 1200, 6, 1, 3, ABILITY, 0),
-                s("sell3", "Harvest Value III", "+100% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell2", 700, 6, 2, 6, SELL, 100),
-                s("growth3", "Fast Growth III", "+50% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth2", 600, 6, 2, 1, GROWTH, 50),
-                s("instantgrow", "Instant Grow", "Ability: right-click a crop with a hoe to fully grow it and all connected crops. 5 minute cooldown. Use /ability instantgrow true", Items.DIAMOND_HOE, "veinharvester", 2400, 12, 3, 3, ABILITY, 0),
-                s("sell4", "Harvest Value IV", "+150% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell3", 2000, 12, 3, 6, SELL, 150),
-                s("growth4", "Fast Growth IV", "+60% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth3", 900, 9, 3, 1, GROWTH, 60),
-                s("growth5", "Fast Growth V", "+100% crop growth speed around you (adds up)", Items.WHEAT_SEEDS, "growth4", 1500, 12, 4, 1, GROWTH, 100)
+                s("sell2", "Harvest Value II", "+80% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell1", 300, 3, 2, 4, SELL, 80),
+                s("growth2", "Fast Growth II", "+40% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth1", 300, 3, 0, 4, GROWTH, 40),
+                s("veinharvester", "Vein Harvester", "Ability: harvesting one ripe crop harvests all connected ripe crops on the same level. Use /ability veinharvester true", Items.IRON_HOE, "growth1", 1200, 6, 2, 0, ABILITY, 0),
+                s("sell3", "Harvest Value III", "+100% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell2", 700, 6, 2, 2, SELL, 100),
+                s("growth3", "Fast Growth III", "+50% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth2", 600, 6, 2, 6, GROWTH, 50),
+                s("instantgrow", "Instant Grow", "Ability: right-click a crop with a hoe to fully grow it and all connected crops. 5 minute cooldown. Use /ability instantgrow true", Items.DIAMOND_HOE, "veinharvester", 2400, 12, 4, 2, ABILITY, 0),
+                s("sell4", "Harvest Value IV", "+150% money for farm goods sold with /sell (adds up)", Items.EMERALD, "sell3", 2000, 12, 4, 4, SELL, 150),
+                s("growth4", "Fast Growth IV", "+60% crop growth speed around you (adds up)", Items.BONE_MEAL, "growth3", 900, 9, 4, 8, GROWTH, 60),
+                s("growth5", "Fast Growth V", "+100% crop growth speed around you (adds up)", Items.WHEAT_SEEDS, "growth4", 1500, 12, 4, 6, GROWTH, 100)
         );
         Set<String> farmerSells = Set.of(
                 "minecraft:wheat", "minecraft:carrot", "minecraft:potato", "minecraft:baked_potato",
@@ -123,20 +134,20 @@ final class ClassDefs {
 
         // ---- Lumberjack. Total cost of all skills = 10,000 Class XP.
         List<Skill> lumberjack = List.of(
-                s("growth1", "Fast Growth I", "+40% sapling growth speed around you (adds up)", Items.BONE_MEAL, null, 100, 1, 0, 3, GROWTH, 40),
-                s("growth2", "Fast Growth II", "+50% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth1", 250, 3, 1, 3, GROWTH, 50),
-                s("growth3", "Fast Growth III", "+60% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth2", 450, 6, 2, 3, GROWTH, 60),
-                s("growth4", "Fast Growth IV", "+70% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth3", 700, 9, 3, 3, GROWTH, 70),
+                s("growth1", "Fast Growth I", "+40% sapling growth speed around you (adds up)", Items.BONE_MEAL, null, 100, 1, 0, 4, GROWTH, 40),
+                s("growth2", "Fast Growth II", "+50% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth1", 250, 3, 2, 6, GROWTH, 50),
+                s("growth3", "Fast Growth III", "+60% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth2", 450, 6, 2, 4, GROWTH, 60),
+                s("growth4", "Fast Growth IV", "+70% sapling growth speed around you (adds up)", Items.BONE_MEAL, "growth3", 700, 9, 2, 2, GROWTH, 70),
                 s("growth5", "Fast Growth V", "+120% sapling growth speed around you (adds up)", Items.OAK_SAPLING, "growth4", 1500, 12, 4, 4, GROWTH, 120),
-                s("treegrow", "Instant Tree Growth", "Ability: right-click a sapling with an axe and it grows into a full tree right away. 30 second cooldown. Use /ability treegrow true", Items.DIAMOND_AXE, "growth4", 2400, 12, 4, 2, ABILITY, 0),
-                s("chop1", "Chopping Speed I", "+20% chopping speed while holding an axe (adds up)", Items.GOLDEN_AXE, "growth1", 150, 3, 1, 1, SPEED, 20),
-                s("chop2", "Chopping Speed II", "+30% chopping speed while holding an axe (adds up)", Items.GOLDEN_AXE, "chop1", 350, 6, 2, 1, SPEED, 30),
-                s("chop3", "Chopping Speed III", "+50% chopping speed while holding an axe (adds up)", Items.NETHERITE_AXE, "chop2", 700, 9, 3, 1, SPEED, 50),
-                s("sell1", "Timber Value I", "+40% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, null, 100, 1, 0, 6, SELL, 40),
-                s("sell2", "Timber Value II", "+50% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell1", 250, 3, 1, 6, SELL, 50),
-                s("sell3", "Timber Value III", "+60% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell2", 450, 6, 2, 6, SELL, 60),
-                s("sell4", "Timber Value IV", "+70% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell3", 800, 9, 3, 6, SELL, 70),
-                s("sell5", "Timber Value V", "+120% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell4", 1800, 12, 4, 6, SELL, 120)
+                s("treegrow", "Instant Tree Growth", "Ability: right-click a sapling with an axe and it grows into a full tree right away. 30 second cooldown. Use /ability treegrow true", Items.DIAMOND_AXE, "growth4", 2400, 12, 4, 0, ABILITY, 0),
+                s("chop1", "Chopping Speed I", "+20% chopping speed while holding an axe (adds up)", Items.GOLDEN_AXE, "growth1", 150, 3, 0, 2, SPEED, 20),
+                s("chop2", "Chopping Speed II", "+30% chopping speed while holding an axe (adds up)", Items.GOLDEN_AXE, "chop1", 350, 6, 2, 0, SPEED, 30),
+                s("chop3", "Chopping Speed III", "+50% chopping speed while holding an axe (adds up)", Items.NETHERITE_AXE, "chop2", 700, 9, 4, 2, SPEED, 50),
+                s("sell1", "Timber Value I", "+40% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, null, 100, 1, 0, 8, SELL, 40),
+                s("sell2", "Timber Value II", "+50% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell1", 250, 3, 0, 6, SELL, 50),
+                s("sell3", "Timber Value III", "+60% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell2", 450, 6, 2, 8, SELL, 60),
+                s("sell4", "Timber Value IV", "+70% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell3", 800, 9, 4, 6, SELL, 70),
+                s("sell5", "Timber Value V", "+120% money for wood goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell4", 1800, 12, 4, 8, SELL, 120)
         );
         Set<String> lumberSells = new HashSet<>();
         for (String wood : new String[]{"oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak"}) {
@@ -152,12 +163,93 @@ final class ClassDefs {
                 "minecraft:crimson_stem", "minecraft:warped_stem", "minecraft:crimson_planks", "minecraft:warped_planks"));
         out.add(new ClassDef("lumberjack", "Lumberjack", Category.ECONOMY, Items.IRON_AXE, lumberjack, lumberSells));
 
-        // ---- The other classes: selectable already, their trees come later.
-        out.add(new ClassDef("hunter", "Hunter", Category.ECONOMY, Items.COOKED_BEEF, List.of(), Set.of()));
-        out.add(new ClassDef("archer", "Archer", Category.COMBAT, Items.BOW, List.of(), Set.of()));
-        out.add(new ClassDef("berserker", "Berserker", Category.COMBAT, Items.DIAMOND_AXE, List.of(), Set.of()));
-        out.add(new ClassDef("warrior", "Warrior", Category.COMBAT, Items.IRON_SWORD, List.of(), Set.of()));
-        out.add(new ClassDef("mage", "Mage", Category.COMBAT, Items.BLAZE_ROD, List.of(), Set.of()));
+        // ---- Hunter, Warrior, Berserker, Archer and Mage. Every class has about 6,000 Class XP of skills.
+        // Kills give the XP (see KillXp). Perks are applied in ClassEffects.update().
+        List<Skill> hunter = List.of(
+                s("sell1", "Hunt Value I", "+40% money for hunting goods sold with /sell (adds up)", Items.GOLD_INGOT, null, 100, 1, 0, 4, SELL, 40),
+                s("move1", "Tracker I", "+8% walking speed (adds up)", Items.LEATHER_BOOTS, "sell1", 150, 3, 0, 2, MOVE, 8),
+                s("sell2", "Hunt Value II", "+50% money for hunting goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell1", 250, 3, 2, 6, SELL, 50),
+                s("xp1", "Tracker's Instinct", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "move1", 300, 6, 2, 0, XPKILL, 1),
+                s("fall1", "Light Landing", "40% less fall damage (adds up)", Items.FEATHER, "move1", 350, 6, 2, 4, FALL, 40),
+                s("sell3", "Hunt Value III", "+60% money for hunting goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell2", 450, 6, 2, 8, SELL, 60),
+                s("move2", "Tracker II", "+10% walking speed (adds up)", Items.GOLDEN_BOOTS, "xp1", 600, 9, 2, 2, MOVE, 10),
+                s("nightvision", "Night Hunter", "Ability: night vision with no time limit. Use /ability nightvision true", Items.GOLDEN_CARROT, "fall1", 700, 9, 4, 2, ABILITY, 0),
+                s("sell4", "Hunt Value IV", "+70% money for hunting goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell3", 800, 9, 4, 6, SELL, 70),
+                s("xp2", "Master Tracker", "+2 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "move2", 900, 12, 4, 0, XPKILL, 2),
+                s("move3", "Tracker III", "+12% walking speed (adds up)", Items.GOLDEN_BOOTS, "nightvision", 900, 12, 4, 4, MOVE, 12),
+                s("sell5", "Hunt Value V", "+120% money for hunting goods sold with /sell (adds up)", Items.GOLD_INGOT, "sell4", 1800, 12, 4, 8, SELL, 120)
+        );
+        Set<String> hunterSells = Set.of(
+                "minecraft:beef", "minecraft:cooked_beef", "minecraft:porkchop", "minecraft:cooked_porkchop",
+                "minecraft:mutton", "minecraft:cooked_mutton", "minecraft:chicken", "minecraft:cooked_chicken",
+                "minecraft:rabbit", "minecraft:cooked_rabbit", "minecraft:leather", "minecraft:feather",
+                "minecraft:rabbit_hide", "minecraft:rabbit_foot", "minecraft:bone", "minecraft:string",
+                "minecraft:spider_eye", "minecraft:ink_sac", "minecraft:glow_ink_sac", "minecraft:gunpowder",
+                "minecraft:slime_ball", "minecraft:rotten_flesh", "minecraft:ender_pearl");
+        out.add(new ClassDef("hunter", "Hunter", Category.ECONOMY, Items.COOKED_BEEF, hunter, hunterSells));
+
+        List<Skill> archer = List.of(
+                s("swift1", "Light Step I", "+8% walking speed (adds up)", Items.LEATHER_BOOTS, null, 100, 1, 0, 4, MOVE, 8),
+                s("feather1", "Feather Fall I", "30% less fall damage (adds up)", Items.FEATHER, "swift1", 150, 3, 0, 6, FALL, 30),
+                s("xp1", "Sharp Eye", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "swift1", 200, 3, 0, 2, XPKILL, 1),
+                s("swift2", "Light Step II", "+10% walking speed (adds up)", Items.GOLDEN_BOOTS, "feather1", 300, 6, 2, 8, MOVE, 10),
+                s("nightvision", "Hawk Eyes", "Ability: night vision with no time limit. Use /ability nightvision true", Items.GOLDEN_CARROT, "feather1", 600, 6, 2, 4, ABILITY, 0),
+                s("armor1", "Padded Vest I", "+1 armor (adds up)", Items.IRON_CHESTPLATE, "xp1", 300, 6, 0, 0, ARMOR, 1),
+                s("swift3", "Light Step III", "+12% walking speed (adds up)", Items.GOLDEN_BOOTS, "swift2", 600, 9, 2, 6, MOVE, 12),
+                s("feather2", "Feather Fall II", "40% less fall damage (adds up)", Items.FEATHER, "nightvision", 500, 9, 4, 6, FALL, 40),
+                s("xp2", "Marksman", "+2 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "armor1", 700, 9, 2, 2, XPKILL, 2),
+                s("swift4", "Light Step IV", "+15% walking speed (adds up)", Items.GOLDEN_BOOTS, "swift3", 900, 12, 4, 8, MOVE, 15),
+                s("armor2", "Padded Vest II", "+2 armor (adds up)", Items.DIAMOND_CHESTPLATE, "xp2", 800, 12, 4, 0, ARMOR, 2)
+        );
+        out.add(new ClassDef("archer", "Archer", Category.COMBAT, Items.BOW, archer, Set.of()));
+
+        List<Skill> berserker = List.of(
+                s("rage1", "Rage I", "+8% damage (adds up)", Items.IRON_AXE, null, 100, 1, 0, 4, DAMAGE, 8),
+                s("fast1", "Bloodrush I", "+8% walking speed (adds up)", Items.LEATHER_BOOTS, "rage1", 150, 3, 0, 2, MOVE, 8),
+                s("hide1", "Thick Hide I", "+1 armor (adds up)", Items.IRON_CHESTPLATE, "rage1", 150, 3, 2, 6, ARMOR, 1),
+                s("rage2", "Rage II", "+12% damage (adds up)", Items.IRON_AXE, "fast1", 300, 6, 2, 0, DAMAGE, 12),
+                s("xp1", "Bloodlust", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "fast1", 400, 6, 2, 4, XPKILL, 1),
+                s("fall1", "Heavy Landing", "40% less fall damage (adds up)", Items.FEATHER, "hide1", 350, 6, 2, 8, FALL, 40),
+                s("rage3", "Rage III", "+18% damage (adds up)", Items.DIAMOND_AXE, "rage2", 600, 9, 2, 2, DAMAGE, 18),
+                s("fast2", "Bloodrush II", "+12% walking speed (adds up)", Items.GOLDEN_BOOTS, "xp1", 600, 9, 4, 2, MOVE, 12),
+                s("hide2", "Thick Hide II", "+2 armor (adds up)", Items.DIAMOND_CHESTPLATE, "fall1", 600, 9, 4, 6, ARMOR, 2),
+                s("rage4", "Rage IV", "+25% damage (adds up)", Items.NETHERITE_AXE, "rage3", 1000, 12, 4, 4, DAMAGE, 25),
+                s("fast3", "Bloodrush III", "+15% walking speed (adds up)", Items.GOLDEN_BOOTS, "fast2", 900, 12, 4, 0, MOVE, 15),
+                s("xp2", "Warlord", "+2 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "hide2", 900, 12, 4, 8, XPKILL, 2)
+        );
+        out.add(new ClassDef("berserker", "Berserker", Category.COMBAT, Items.DIAMOND_AXE, berserker, Set.of()));
+
+        List<Skill> warrior = List.of(
+                s("dmg1", "Sharpened Blade I", "+5% damage (adds up)", Items.IRON_SWORD, null, 100, 1, 0, 4, DAMAGE, 5),
+                s("arm1", "Iron Skin I", "+2 armor (adds up)", Items.IRON_CHESTPLATE, "dmg1", 150, 3, 0, 6, ARMOR, 2),
+                s("move1", "Swift Footing I", "+5% walking speed (adds up)", Items.LEATHER_BOOTS, "dmg1", 150, 3, 0, 2, MOVE, 5),
+                s("dmg2", "Sharpened Blade II", "+10% damage (adds up)", Items.IRON_SWORD, "arm1", 300, 6, 2, 8, DAMAGE, 10),
+                s("xp1", "Battle Hardened", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "arm1", 400, 6, 2, 4, XPKILL, 1),
+                s("fall1", "Light Landing", "30% less fall damage (adds up)", Items.FEATHER, "move1", 350, 6, 2, 0, FALL, 30),
+                s("dmg3", "Sharpened Blade III", "+15% damage (adds up)", Items.DIAMOND_SWORD, "dmg2", 600, 9, 2, 6, DAMAGE, 15),
+                s("arm2", "Iron Skin II", "+3 armor (adds up)", Items.DIAMOND_CHESTPLATE, "xp1", 600, 9, 4, 6, ARMOR, 3),
+                s("move2", "Swift Footing II", "+10% walking speed (adds up)", Items.GOLDEN_BOOTS, "fall1", 600, 9, 4, 2, MOVE, 10),
+                s("dmg4", "Sharpened Blade IV", "+20% damage (adds up)", Items.NETHERITE_SWORD, "dmg3", 1000, 12, 4, 8, DAMAGE, 20),
+                s("arm3", "Iron Skin III", "+4 armor (adds up)", Items.NETHERITE_CHESTPLATE, "arm2", 1000, 12, 4, 4, ARMOR, 4),
+                s("xp2", "Veteran", "+2 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "move2", 900, 12, 4, 0, XPKILL, 2)
+        );
+        out.add(new ClassDef("warrior", "Warrior", Category.COMBAT, Items.IRON_SWORD, warrior, Set.of()));
+
+        List<Skill> mage = List.of(
+                s("arcane1", "Arcane Focus I", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, null, 100, 1, 0, 4, XPKILL, 1),
+                s("nightvision", "Mage Sight", "Ability: night vision with no time limit. Use /ability nightvision true", Items.GOLDEN_CARROT, "arcane1", 400, 3, 0, 6, ABILITY, 0),
+                s("feather1", "Featherweight", "50% less fall damage (adds up)", Items.FEATHER, "arcane1", 150, 3, 0, 2, FALL, 50),
+                s("swift1", "Haste I", "+8% walking speed (adds up)", Items.SUGAR, "nightvision", 300, 6, 2, 4, MOVE, 8),
+                s("ward1", "Mana Ward I", "+2 armor (adds up)", Items.IRON_CHESTPLATE, "nightvision", 350, 6, 0, 8, ARMOR, 2),
+                s("arcane2", "Arcane Focus II", "+1 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "feather1", 400, 6, 2, 0, XPKILL, 1),
+                s("swift2", "Haste II", "+10% walking speed (adds up)", Items.SUGAR, "swift1", 600, 9, 2, 2, MOVE, 10),
+                s("ward2", "Mana Ward II", "+3 armor (adds up)", Items.DIAMOND_CHESTPLATE, "ward1", 700, 9, 2, 6, ARMOR, 3),
+                s("arcane3", "Arcane Focus III", "+2 Class XP for every kill that gives XP (adds up)", Items.EXPERIENCE_BOTTLE, "arcane2", 700, 9, 4, 2, XPKILL, 2),
+                s("swift3", "Haste III", "+12% walking speed (adds up)", Items.SUGAR, "swift2", 900, 12, 4, 0, MOVE, 12),
+                s("ward3", "Mana Ward III", "+4 armor (adds up)", Items.NETHERITE_CHESTPLATE, "ward2", 1000, 12, 4, 8, ARMOR, 4),
+                s("arcane4", "Arcane Focus IV", "+3 Class XP for every kill that gives XP (adds up)", Items.NETHER_STAR, "arcane3", 1000, 12, 4, 4, XPKILL, 3)
+        );
+        out.add(new ClassDef("mage", "Mage", Category.COMBAT, Items.BLAZE_ROD, mage, Set.of()));
         return out;
     }
 }

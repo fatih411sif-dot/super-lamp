@@ -34,6 +34,7 @@ final class KillXp {
                default -> 0L;
             };
             if (xp > 0L) {
+               xp += classes.perkTotal(p.getUUID(), "xp");
                classes.addXp(p, xp);
             }
          }
