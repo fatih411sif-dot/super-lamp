@@ -9,15 +9,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.decoration.ArmorStand;
 
 /**
  * /sit - seats the player on an invisible, invulnerable armor stand. Sneak (or /sit again) to stand up.
- * The stand is always removed again: on stand-up, on disconnect, and (for leftovers after a crash) on chunk load.
+ * The stand is removed again when the player stands up or disconnects.
  */
 final class Sit {
-   static final String TAG = "sim_sit";
    /** How far below the player's feet the seat is placed. Raise it to sit lower, lower it to sit higher. */
    private static final double SEAT_DROP = 0.8;
    private static final Map<UUID, Seat> seats = new HashMap<>();
@@ -61,15 +60,11 @@ final class Sit {
          return 0;
       } else {
          ServerLevel level = p.level();
-         ArmorStand stand = new ArmorStand(EntityType.ARMOR_STAND, level);
+         ArmorStand stand = new ArmorStand(EntityTypes.ARMOR_STAND, level);
          stand.setPos(p.getX(), p.getY() - SEAT_DROP, p.getZ());
          stand.setYRot(p.getYRot());
-         stand.setSmall(true);
          stand.setInvisible(true);
-         stand.setInvulnerable(true);
          stand.setNoGravity(true);
-         stand.addTag(TAG);
-         // track first, so the chunk-load cleanup doesn't mistake our own stand for a leftover
          seats.put(p.getUUID(), new Seat(stand, p.getX(), p.getY(), p.getZ()));
          level.addFreshEntity(stand);
          if (!p.startRiding(stand)) {
@@ -108,17 +103,6 @@ final class Sit {
       if (seat != null) {
          p.stopRiding();
          seat.stand.discard();
-      }
-   }
-
-   static boolean isLeftover(Entity e) {
-      return e instanceof ArmorStand && e.getTags().contains(TAG) && !isTracked(e);
-   }
-
-   /** Removes seat stands left behind in the world (e.g. after a crash). */
-   static void cleanupLeftover(Entity e) {
-      if (e instanceof ArmorStand && e.getTags().contains(TAG) && !isTracked(e)) {
-         e.discard();
       }
    }
 

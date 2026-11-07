@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -31,13 +30,7 @@ final class ExtraCommands {
       d.register((LiteralArgumentBuilder)Commands.literal("sit").executes(ctx -> Sit.toggle(((CommandSourceStack)ctx.getSource()).getPlayerOrException())));
 
       // ---- /rank ----
-      List<String> colorNames = new ArrayList<>();
-
-      for (ChatFormatting f : ChatFormatting.values()) {
-         if (f.isColor()) {
-            colorNames.add(f.getName());
-         }
-      }
+      List<String> colorNames = RankManager.colorNames();
 
       SuggestionProvider<CommandSourceStack> colors = (ctx, builder) -> SharedSuggestionProvider.suggest(colorNames, builder);
       LiteralArgumentBuilder<CommandSourceStack> rank = Commands.literal("rank");
@@ -62,8 +55,8 @@ final class ExtraCommands {
                      ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                      String colorName = StringArgumentType.getString(ctx, "color").toLowerCase();
                      String name = StringArgumentType.getString(ctx, "name").trim();
-                     ChatFormatting color = ChatFormatting.getByName(colorName);
-                     if (color == null || !color.isColor()) {
+                     ChatFormatting color = RankManager.parseColor(colorName);
+                     if (color == null) {
                         ctx.getSource().sendFailure(Component.literal("Unknown color '" + colorName + "'."));
                         return 0;
                      } else if (name.isEmpty() || name.length() > 16) {

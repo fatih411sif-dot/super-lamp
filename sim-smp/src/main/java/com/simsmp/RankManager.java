@@ -9,7 +9,10 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
@@ -94,15 +97,55 @@ public final class RankManager {
       return r == null ? "" : "[" + r.name + "] ";
    }
 
+   private static final Map<String, ChatFormatting> COLORS = new LinkedHashMap<>();
+
+   static {
+      COLORS.put("black", ChatFormatting.BLACK);
+      COLORS.put("dark_blue", ChatFormatting.DARK_BLUE);
+      COLORS.put("dark_green", ChatFormatting.DARK_GREEN);
+      COLORS.put("dark_aqua", ChatFormatting.DARK_AQUA);
+      COLORS.put("dark_red", ChatFormatting.DARK_RED);
+      COLORS.put("dark_purple", ChatFormatting.DARK_PURPLE);
+      COLORS.put("gold", ChatFormatting.GOLD);
+      COLORS.put("gray", ChatFormatting.GRAY);
+      COLORS.put("dark_gray", ChatFormatting.DARK_GRAY);
+      COLORS.put("blue", ChatFormatting.BLUE);
+      COLORS.put("green", ChatFormatting.GREEN);
+      COLORS.put("aqua", ChatFormatting.AQUA);
+      COLORS.put("red", ChatFormatting.RED);
+      COLORS.put("light_purple", ChatFormatting.LIGHT_PURPLE);
+      COLORS.put("yellow", ChatFormatting.YELLOW);
+      COLORS.put("white", ChatFormatting.WHITE);
+   }
+
+   public static List<String> colorNames() {
+      return new ArrayList<>(COLORS.keySet());
+   }
+
+   /** Color for a typed name, or null if it isn't one of the 16 colors. */
+   public static ChatFormatting parseColor(String name) {
+      return name == null ? null : COLORS.get(name.toLowerCase());
+   }
+
    public static ChatFormatting colorOf(String name) {
-      ChatFormatting f = name == null ? null : ChatFormatting.getByName(name);
-      return f != null && f.isColor() ? f : ChatFormatting.WHITE;
+      ChatFormatting f = parseColor(name);
+      return f != null ? f : ChatFormatting.WHITE;
+   }
+
+   private static String nameOf(ChatFormatting color) {
+      for (Map.Entry<String, ChatFormatting> e : COLORS.entrySet()) {
+         if (e.getValue() == color) {
+            return e.getKey();
+         }
+      }
+
+      return "white";
    }
 
    public synchronized void set(MinecraftServer server, ServerPlayer p, ChatFormatting color, String name) {
       RankManager.Rank r = new RankManager.Rank();
       r.name = name;
-      r.color = color.getName();
+      r.color = nameOf(color);
       this.ranks.put(p.getUUID(), r);
       this.dirty = true;
       this.apply(server, p);
@@ -122,7 +165,7 @@ public final class RankManager {
          Scoreboard board = server.getScoreboard();
          String holder = p.getScoreboardName();
          ChatFormatting color = colorOf(r.color);
-         String teamName = TEAM_PREFIX + Integer.toHexString((color.getName() + "|" + r.name).hashCode());
+         String teamName = TEAM_PREFIX + Integer.toHexString((nameOf(color) + "|" + r.name).hashCode());
          PlayerTeam team = board.getPlayerTeam(teamName);
          if (team == null) {
             team = board.addPlayerTeam(teamName);

@@ -3,7 +3,6 @@ package com.simsmp;
 import java.nio.file.Path;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.ServerStopping;
@@ -72,11 +71,6 @@ public class SimSmp implements ModInitializer {
          sidebar.forget(player);
          ClassEffects.forget(player);
          Sit.stop(player);
-      });
-      ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-         if (Sit.isLeftover(entity)) {
-            world.getServer().execute(() -> Sit.cleanupLeftover(entity));
-         }
       });
       int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
       ServerTickEvents.END_SERVER_TICK.register((EndTick)server -> {
