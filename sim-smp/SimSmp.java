@@ -49,10 +49,14 @@ public class SimSmp implements ModInitializer {
         RedeemManager redeem = new RedeemManager(eco, dir);
         redeem.load();
 
+        Ranks ranks = new Ranks(dir);
+        ranks.load();
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             EconomyCommands.register(dispatcher, cfg, eco, trades, market, shop, gacha, classes);
             RedeemCommands.register(dispatcher, redeem);
             ClassCommands.register(dispatcher, classes, cfg);
+            Ranks.register(dispatcher, ranks);
         });
 
         ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -85,6 +89,7 @@ public class SimSmp implements ModInitializer {
             eco.ensure(player.getUUID());
             eco.rememberName(player.getUUID(), Msg.name(player)); // for /top
             sidebar.show(server, player);
+            ranks.apply(server, player); // the rank tag in front of the name
         });
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {

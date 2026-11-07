@@ -145,6 +145,18 @@ XP: for kills made with any weapon in hand (not bare hands) or with an arrow. Th
 - Spell Damage I-III: +10%, +20%, +30% damage with melee weapons (total +60%). Swift Feet I-III: +5%, +10%, +15% running speed (total +30%). Warding I-III: 5%, 10%, 15% less damage from everything (total 30%).
 - Sharpness VI (+3.5 damage, no book) and Fire Aspect (4 seconds of fire).
 
+## Ranks (cosmetic only)
+Ranks are only for show: a coloured tag such as `[VIP]` in front of the player's name, above their head, in chat and in the tab list. A rank gives no benefit at all.
+- `/rank set <player> <rank>` gives a rank, `/rank remove <player>` takes it away, `/rank reload` re-reads `ranks.json`. All three are OP only.
+- `/rank list` shows every rank the way it looks in chat (anyone can use it), and `/rank` shows your own rank.
+- The 18 default ranks are in `config/sim_smp/ranks.json`: muted, player, vip, pro, mvp, elite, helper, nitro, builder, staff, mod, supporter, admin, owner, developer, youtube, twitch, tiktok. Each line has `id` (what you type in commands, a-z, 0-9 and `_`, at most 11 characters), `text` (what is shown, symbols are fine), `color` (hex) and `bold`. Add, remove or recolour ranks there, then `/rank reload`.
+- Who has which rank is saved in `playerranks.json`, so a rank stays after a restart.
+- Ranks use the vanilla scoreboard teams (one team per rank, called `rank_<id>`). A player can only be in one team, so a rank replaces a team that was made with `/team`.
+- The tag is text. The pictures in a rank pack (icons and wooden signs) need a resource pack, like the jumpscare pictures.
+
+## Jumpscare (OP only)
+`/jumpscare <players>` gives the chosen players the Elder Guardian jump scare: its face jumps at the screen with its sound, followed by a short black screen and a skull. Only OPs (gamemaster permission) can use it. `<players>` can be a name or `@a`, `@r`, `@p`. Nothing changes in the world and nobody needs a client mod. It lives in the same file as the ranks (`Ranks.java`).
+
 ## Redeem codes
 Players type `/redeem <code>` (not case sensitive). Each player can use a code **once**. Wrong codes are rate limited (5 per minute).
 
