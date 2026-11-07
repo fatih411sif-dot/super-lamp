@@ -46,6 +46,8 @@ public final class SimConfig {
     public double archerRangeMultiplier = 1.5;
     /** Combat classes: killing the same player again gives Class XP only after this many minutes (0 = no limit). */
     public int playerKillXpCooldownMinutes = 10;
+    /** /sit: how far above the feet the invisible seat is put (negative = lower). Tune this if the sitting pose floats or sinks. */
+    public double sitHeightOffset = -0.6;
     /** Berserker's Parry: seconds between uses. */
     public int parryCooldownSeconds = 30;
     /** Berserker's Parry takes half of the target's health, but never more than this (so bosses are not halved). */

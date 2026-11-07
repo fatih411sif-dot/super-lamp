@@ -79,6 +79,7 @@ Gradle wrapper, then copy this project's `src/` folder plus `build.gradle`/`grad
 - Skills form a tree: a skill can only be unlocked after the skill above it. Perks of the same kind add up.
 - `/ability` lists your abilities, `/ability <name> <true|false>` switches one on or off.
 - OP: `/classadmin addxp <player> <amount>` (for testing).
+- OP: `/classadmin reset <player>` wipes ALL class data of an online player (the 4 chosen classes, level, XP, skills, abilities, Mage effect) so they pick their classes again from the start. It cannot be undone, so copy `classes.json` first if you are unsure.
 
 ### Miner
 XP comes from ores only (coal 1, copper 1, iron 2, redstone 2, gold 3, lapis 3, emerald 6, diamond 8, ancient debris 15). The whole tree costs 10,250 Class XP.
@@ -144,6 +145,9 @@ XP: for kills made with any weapon in hand (not bare hands) or with an arrow. Th
 - Enemies hit by your weapon (or by an arrow you shot) get that effect. It lasts `mageEffectSeconds` (default 4) plus 2 seconds for each Spell Duration skill (up to 10 seconds), and becomes level II with Spell Potency. Levitation is always level I and at most 5 seconds.
 - Spell Damage I-III: +10%, +20%, +30% damage with melee weapons (total +60%). Swift Feet I-III: +5%, +10%, +15% running speed (total +30%). Warding I-III: 5%, 10%, 15% less damage from everything (total 30%).
 - Sharpness VI (+3.5 damage, no book) and Fire Aspect (4 seconds of fire).
+
+## Sit
+`/sit` (everyone) sits you down where you stand. Sneak (shift) or type `/sit` again to stand up. It works by putting an invisible armor stand under you and making you ride it, which is what gives the sitting pose, so nobody needs a client mod. You can't sit while flying, swimming, riding something, in spectator mode, or in the air. The seat disappears when you stand up, leave the game or die. If the pose floats above or sinks into the ground, change `sitHeightOffset` in `config.json` (default -0.6; a smaller number sits lower).
 
 ## Ranks (cosmetic only)
 Ranks are only for show: a coloured tag such as `[VIP]` in front of the player's name, above their head, in chat and in the tab list. A rank gives no benefit at all.

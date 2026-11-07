@@ -186,6 +186,19 @@ public final class ClassManager {
         return Math.max(0, wait);
     }
 
+    // ------------------------------------------------------------------ admin reset
+
+    /**
+     * Wipes everything about this player's classes: the 4 chosen classes, the equipped class, the level, XP and
+     * skills of every class, switched-on abilities and the Mage effect. The player starts again from the pick screen.
+     * Saved right away so a crash cannot bring the old data back.
+     */
+    public synchronized void resetPlayer(UUID id) {
+        players.remove(id);
+        dirty = true;
+        save();
+    }
+
     // ------------------------------------------------------------------ choosing classes
 
     /** @return an error text, or null when it worked. Only allowed while the player is still choosing. */

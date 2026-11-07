@@ -17,7 +17,7 @@ import net.minecraft.server.permissions.Permissions;
 
 import java.util.List;
 
-/** /class (GUI), /class replace, and /classadmin addxp for OPs. */
+/** /class (GUI), /class replace, and /classadmin addxp and reset for OPs. */
 final class ClassCommands {
     private ClassCommands() {}
 
@@ -120,8 +120,20 @@ final class ClassCommands {
                                 }))));
 
         // /classadmin addxp <player> <amount>   (OP: also useful for testing)
+        // /classadmin reset <player>            (OP: the player picks their 4 classes again from the start)
         d.register(Commands.literal("classadmin")
                 .requires(Commands.hasPermission(new PermissionCheck.Require(Permissions.COMMANDS_GAMEMASTER)))
+                .then(Commands.literal("reset")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> {
+                                    ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                    classes.resetPlayer(target.getUUID());
+                                    ClassEffects.update(target, classes); // takes the perks, Night Vision and speed off right away
+                                    Msg.info(target, "An admin reset your classes. Type /class to choose your 4 classes again.");
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                            "Reset all class data of " + Msg.name(target) + ". They can pick their classes again."), true);
+                                    return 1;
+                                })))
                 .then(Commands.literal("addxp")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("amount", LongArgumentType.longArg(1))

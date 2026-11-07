@@ -57,6 +57,7 @@ public class SimSmp implements ModInitializer {
             RedeemCommands.register(dispatcher, redeem);
             ClassCommands.register(dispatcher, classes, cfg);
             Ranks.register(dispatcher, ranks);
+            Sit.register(dispatcher, cfg);
         });
 
         ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -79,7 +80,10 @@ public class SimSmp implements ModInitializer {
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> ClassEffects.onEntityDeath(entity, source, classes, cfg));
 
         // Archer: arrow boosts when shot, arrow resistance, poison arrows
-        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> ClassEffects.onEntityLoad(entity, classes, cfg));
+        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+            ClassEffects.onEntityLoad(entity, classes, cfg);
+            Sit.onEntityLoad(entity); // clears seats left over from a crash
+        });
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> ClassEffects.allowDamage(entity, source, amount, classes));
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, damageTaken, blocked) ->
                 ClassEffects.afterDamage(entity, source, damageTaken, blocked, classes, cfg));
@@ -97,6 +101,7 @@ public class SimSmp implements ModInitializer {
             trades.playerLeft(player);
             sidebar.forget(player);
             ClassEffects.forget(player);
+            Sit.forget(player);
         });
 
         final int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
@@ -105,6 +110,7 @@ public class SimSmp implements ModInitializer {
             GachaMenu.tickAll();
             ClassEffects.tickArrows();
             ClassEffects.tickCharges(server, classes, cfg);
+            Sit.tick(server);
             if (tickCounter % 20 == 0) {
                 for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                     sidebar.update(server, p);
