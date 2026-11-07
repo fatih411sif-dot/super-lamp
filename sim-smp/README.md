@@ -71,6 +71,36 @@ Gradle wrapper, then copy this project's `src/` folder plus `build.gradle`/`grad
   `chance` is a weight (higher = drops more often), `rarity` is COMMON, UNCOMMON, RARE, EPIC or LEGENDARY. Restart after editing.
 - The money is taken when the spin starts. If the window is closed during the spin, the prize is handed over immediately.
 
+## Classes
+8 classes: Economy (Miner, Farmer, Lumberjack, Hunter) and Combat (Archer, Berserker, Warrior, Mage). **Miner**, **Farmer** and **Lumberjack** have a skill tree for now.
+- `/class` opens the GUI. First choose **2 Economy + 2 Combat** classes (click to pick), then click one of them twice to equip it. Only ONE class is equipped at a time; every class keeps its own level, XP and skills.
+- Switching the equipped class has a cooldown (`classSwitchMinutes`, default 10). To swap one of your 4 chosen classes use `/class replace <old> <new>`: costs `classChangeFee` (default 10,000) and the old class goes back to level 0.
+- **Class XP** is shown in the sidebar. It is also the money for skills. Level comes from total XP earned, so buying skills never lowers it.
+- Skills form a tree: a skill can only be unlocked after the skill above it. Perks of the same kind add up.
+- `/ability` lists your abilities, `/ability <name> <true|false>` switches one on or off.
+- OP: `/classadmin addxp <player> <amount>` (for testing).
+
+### Miner
+XP comes from ores only (coal 1, copper 1, iron 2, redstone 2, gold 3, lapis 3, emerald 6, diamond 8, ancient debris 15). The whole tree costs 10,250 Class XP.
+- Ore Value I-V: +10%, +20%, +30%, +50%, +100% money when selling ores with `/sell` (total +210%). Does not apply to items bought from `/dshop`.
+- Mining Speed I-IV: +10%, +20%, +40%, +60% (total +130%). Super Efficiency: extra mining efficiency like Efficiency III.
+- Light Landing: 50% less fall damage.
+- Abilities (pickaxe needed): `veinminer` (breaks the connected ore vein, max `veinMinerMaxBlocks`, default 64), `nightvision` (no time limit), `mine3x3` (breaks a 3x3 area).
+
+### Farmer
+XP: 1 for every fully grown crop harvested (young crops give nothing, so replanting cannot be farmed). The whole tree costs 10,150 Class XP.
+- Harvest Value I-IV: +50%, +80%, +100%, +150% money when selling farm goods (crops, fruit, bread, eggs, honey...) with `/sell` (total +380%). Does not apply to items bought from `/dshop`.
+- Fast Growth I-V: +20%, +40%, +50%, +60%, +100% crop growth speed within 10 blocks of you (total +270%). It gives crops extra growth chances; water and light rules still apply.
+- `veinharvester` ability: harvesting one ripe crop harvests all connected ripe crops of the same kind on the same level (max `veinHarvesterMaxBlocks`, default 128).
+- `instantgrow` ability: right-click a crop with a hoe and it plus every connected crop grows to full size. Cooldown `instantGrowCooldownSeconds` (default 300 = 5 minutes), max `instantGrowMaxBlocks` crops (default 256).
+
+### Lumberjack
+XP: 2 for every log of a natural tree (stripped logs never count, and a log only counts when natural leaves are close, so placing and re-breaking logs cannot be farmed). There is no auto tree-cutting. The whole tree costs 10,000 Class XP.
+- Timber Value I-V: +40%, +50%, +60%, +70%, +120% money when selling logs, wood, planks, leaves and saplings with `/sell` (total +340%). Does not apply to items bought from `/dshop`.
+- Fast Growth I-V: +40%, +50%, +60%, +70%, +120% sapling growth speed within 10 blocks of you (total +340%).
+- Chopping Speed I-III: +20%, +30%, +50% (total +100%), only while you hold an axe.
+- `treegrow` ability: right-click a sapling with an axe and it grows into a full tree right away. Cooldown `instantTreeCooldownSeconds` (default 30). If the tree has no room it does not grow and the cooldown is not used.
+
 ## Redeem codes
 Players type `/redeem <code>` (not case sensitive). Each player can use a code **once**. Wrong codes are rate limited (5 per minute).
 

@@ -3,9 +3,11 @@ package com.simsmp;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -208,6 +210,18 @@ public final class DailyShop {
         return out;
     }
 
+    private static final String SHOP_TAG = "sim_smp_shop";
+
+    /** Tags an item as bought from /dshop, so class sell bonuses do not apply to it (stops buy-and-resell). */
+    static void markShopItem(ItemStack stack) {
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putBoolean(SHOP_TAG, true));
+    }
+
+    static boolean isShopItem(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.contains(SHOP_TAG);
+    }
+
     /** True when somebody already bought this offer in the current period. */
     public synchronized boolean isSold(String id) {
         rollover();
@@ -236,7 +250,9 @@ public final class DailyShop {
         }
         sold.add(id);
         dirty = true;
-        ItemGiver.give(p, offer.stack().copy());
+        ItemStack given = offer.stack().copy();
+        markShopItem(given);
+        ItemGiver.give(p, given);
         save();
         Msg.ok(p, "You bought " + offer.stack().getCount() + "x " + offer.stack().getHoverName().getString()
                 + " for " + eco.fmt(offer.price()) + ".");
@@ -258,34 +274,34 @@ public final class DailyShop {
     private static List<Entry> defaultPool() {
         List<Entry> p = new ArrayList<>();
         // ---- common
-        p.add(e("bread", 16, 40, 100));
-        p.add(e("cooked_beef", 16, 80, 100));
-        p.add(e("cooked_porkchop", 16, 70, 100));
+        p.add(e("bread", 16, 480, 100));
+        p.add(e("cooked_beef", 16, 480, 100));
+        p.add(e("cooked_porkchop", 16, 480, 100));
         p.add(e("torch", 32, 30, 100));
-        p.add(e("oak_log", 32, 100, 100));
-        p.add(e("oak_planks", 64, 110, 100));
+        p.add(e("oak_log", 32, 480, 100));
+        p.add(e("oak_planks", 64, 192, 100));
         p.add(e("cobblestone", 64, 80, 100));
         p.add(e("sand", 64, 80, 100));
         p.add(e("glass", 32, 60, 100));
-        p.add(e("coal", 32, 200, 100));
+        p.add(e("coal", 32, 384, 100));
         p.add(e("arrow", 32, 90, 100));
         p.add(e("string", 16, 60, 100));
         p.add(e("bone", 16, 50, 100));
-        p.add(e("leather", 8, 60, 100));
-        p.add(e("sugar_cane", 32, 70, 100));
-        p.add(e("wheat", 32, 90, 100));
-        p.add(e("carrot", 32, 70, 100));
-        p.add(e("potato", 32, 70, 100));
-        p.add(e("apple", 8, 50, 100));
-        p.add(e("cookie", 16, 40, 100));
+        p.add(e("leather", 8, 180, 100));
+        p.add(e("sugar_cane", 32, 144, 100));
+        p.add(e("wheat", 32, 336, 100));
+        p.add(e("carrot", 32, 240, 100));
+        p.add(e("potato", 32, 240, 100));
+        p.add(e("apple", 8, 96, 100));
+        p.add(e("cookie", 16, 144, 100));
         p.add(e("book", 4, 60, 100));
         // ---- uncommon
-        p.add(e("iron_ingot", 16, 220, 40));
-        p.add(e("copper_ingot", 32, 200, 40));
-        p.add(e("gold_ingot", 8, 140, 40));
-        p.add(e("redstone", 32, 180, 40));
-        p.add(e("lapis_lazuli", 16, 120, 40));
-        p.add(e("quartz", 16, 110, 40));
+        p.add(e("iron_ingot", 16, 960, 40));
+        p.add(e("copper_ingot", 32, 480, 40));
+        p.add(e("gold_ingot", 8, 1200, 40));
+        p.add(e("redstone", 32, 480, 40));
+        p.add(e("lapis_lazuli", 16, 288, 40));
+        p.add(e("quartz", 16, 288, 40));
         p.add(e("gunpowder", 8, 80, 40));
         p.add(e("slime_ball", 8, 120, 40));
         p.add(e("ender_pearl", 4, 160, 40));
@@ -293,10 +309,10 @@ public final class DailyShop {
         p.add(e("experience_bottle", 8, 240, 40));
         p.add(e("golden_carrot", 16, 150, 40));
         p.add(e("golden_apple", 1, 200, 40));
-        p.add(e("obsidian", 8, 130, 40));
+        p.add(e("obsidian", 8, 240, 40));
         p.add(e("glowstone", 16, 120, 40));
         p.add(e("sea_lantern", 4, 100, 40));
-        p.add(e("honey_bottle", 4, 80, 40));
+        p.add(e("honey_bottle", 4, 90, 40));
         p.add(e("cake", 1, 60, 40));
         p.add(e("bucket", 1, 90, 40));
         p.add(e("hopper", 1, 140, 40));
@@ -309,8 +325,8 @@ public final class DailyShop {
         p.add(e("iron_pickaxe", 1, 220, 40));
         p.add(e("iron_chestplate", 1, 330, 40));
         // ---- rare
-        p.add(e("diamond", 2, 300, 10));
-        p.add(e("emerald", 4, 380, 10));
+        p.add(e("diamond", 2, 600, 10));
+        p.add(e("emerald", 4, 720, 10));
         p.add(e("diamond_sword", 1, 650, 10));
         p.add(e("diamond_pickaxe", 1, 700, 10));
         p.add(e("diamond_axe", 1, 700, 10));
@@ -319,10 +335,10 @@ public final class DailyShop {
         p.add(e("diamond_chestplate", 1, 1100, 10));
         p.add(e("diamond_leggings", 1, 1000, 10));
         p.add(e("diamond_boots", 1, 600, 10));
-        p.add(e("ancient_debris", 1, 450, 10));
-        p.add(e("netherite_scrap", 1, 500, 10));
+        p.add(e("ancient_debris", 1, 360, 10));
+        p.add(e("netherite_scrap", 1, 375, 10));
         p.add(e("shulker_shell", 2, 500, 10));
-        p.add(e("nautilus_shell", 1, 260, 10));
+        p.add(e("nautilus_shell", 1, 200, 10));
         p.add(e("heart_of_the_sea", 1, 800, 10));
         p.add(e("trident", 1, 900, 10));
         p.add(e("ender_chest", 1, 350, 10));
@@ -335,7 +351,7 @@ public final class DailyShop {
         p.add(e("wind_charge", 16, 400, 10));
         p.add(e("breeze_rod", 4, 380, 10));
         // ---- epic
-        p.add(e("netherite_ingot", 1, 2500, 3));
+        p.add(e("netherite_ingot", 1, 2250, 3));
         p.add(e("totem_of_undying", 1, 1800, 3));
         p.add(e("elytra", 1, 4500, 3));
         p.add(e("enchanted_golden_apple", 1, 2000, 3));

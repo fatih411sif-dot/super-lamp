@@ -24,19 +24,21 @@ public final class SellMenu extends ChestMenu {
     private final SimpleContainer box;
     private final SimConfig cfg;
     private final EconomyManager eco;
+    private final ClassManager classes;
     private boolean settled;
 
-    private SellMenu(int id, Inventory inv, SimpleContainer box, SimConfig cfg, EconomyManager eco) {
+    private SellMenu(int id, Inventory inv, SimpleContainer box, SimConfig cfg, EconomyManager eco, ClassManager classes) {
         super(MenuType.GENERIC_9x6, id, inv, box, 6);
         this.box = box;
         this.cfg = cfg;
         this.eco = eco;
+        this.classes = classes;
     }
 
-    public static void open(ServerPlayer player, SimConfig cfg, EconomyManager eco) {
+    public static void open(ServerPlayer player, SimConfig cfg, EconomyManager eco, ClassManager classes) {
         SimpleContainer box = new SimpleContainer(54);
         player.openMenu(new SimpleMenuProvider(
-                (id, inv, p) -> new SellMenu(id, inv, box, cfg, eco),
+                (id, inv, p) -> new SellMenu(id, inv, box, cfg, eco, classes),
                 Component.literal("Sell Items (close to sell)")));
     }
 
@@ -56,7 +58,7 @@ public final class SellMenu extends ChestMenu {
             String key = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
             Long price = cfg.prices.get(key);
             if (price != null && price > 0) {
-                total += price * stack.getCount();
+                total += classes.sellValue(sp.getUUID(), stack, price);
                 sold.merge(key, stack.getCount(), Integer::sum);
             } else {
                 unsellable.add(stack.copy());

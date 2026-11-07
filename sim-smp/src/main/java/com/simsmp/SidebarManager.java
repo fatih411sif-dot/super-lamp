@@ -26,16 +26,18 @@ import java.util.UUID;
  */
 public final class SidebarManager {
     private static final String OBJECTIVE_NAME = "sim_smp_side";
-    private static final int LINES = 9;
+    private static final int LINES = 10;
 
     private final SimConfig cfg;
     private final EconomyManager eco;
+    private final ClassManager classes;
     private final Objective objective; // detached: only ever sent in packets
     private final Map<UUID, String[]> cache = new HashMap<>();
 
-    public SidebarManager(SimConfig cfg, EconomyManager eco) {
+    public SidebarManager(SimConfig cfg, EconomyManager eco, ClassManager classes) {
         this.cfg = cfg;
         this.eco = eco;
+        this.classes = classes;
         Component title = Component.literal(cfg.scoreboardTitle)
                 .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD);
         this.objective = new Objective(new Scoreboard(), OBJECTIVE_NAME, ObjectiveCriteria.DUMMY, title,
@@ -83,12 +85,13 @@ public final class SidebarManager {
         lines[0] = Component.literal(" ");
         lines[1] = line("Player: ", Msg.name(p), ChatFormatting.WHITE);
         lines[2] = line("Money: ", eco.fmt(eco.get(p.getUUID())), ChatFormatting.GOLD);
-        lines[3] = line("Hearts: ", String.valueOf(hearts), ChatFormatting.RED);
-        lines[4] = line("Deaths: ", String.valueOf(deaths), ChatFormatting.DARK_RED);
-        lines[5] = line("Playtime: ", playtime(playTicks), ChatFormatting.AQUA);
-        lines[6] = line("Ping: ", ping + "ms", pingColor);
-        lines[7] = line("Online: ", server.getPlayerCount() + "/" + server.getMaxPlayers(), ChatFormatting.GREEN);
-        lines[8] = Component.literal("  ");
+        lines[3] = line("Class XP: ", ClassCommands.sidebarText(classes, p), ChatFormatting.LIGHT_PURPLE);
+        lines[4] = line("Hearts: ", String.valueOf(hearts), ChatFormatting.RED);
+        lines[5] = line("Deaths: ", String.valueOf(deaths), ChatFormatting.DARK_RED);
+        lines[6] = line("Playtime: ", playtime(playTicks), ChatFormatting.AQUA);
+        lines[7] = line("Ping: ", ping + "ms", pingColor);
+        lines[8] = line("Online: ", server.getPlayerCount() + "/" + server.getMaxPlayers(), ChatFormatting.GREEN);
+        lines[9] = Component.literal("  ");
         return lines;
     }
 

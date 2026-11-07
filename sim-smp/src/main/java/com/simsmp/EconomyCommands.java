@@ -29,7 +29,7 @@ final class EconomyCommands {
     private EconomyCommands() {}
 
     static void register(CommandDispatcher<CommandSourceStack> d, SimConfig cfg, EconomyManager eco,
-                         TradeManager trades, MarketManager market, DailyShop shop, Gacha gacha) {
+                         TradeManager trades, MarketManager market, DailyShop shop, Gacha gacha, ClassManager classes) {
         // --- balance -------------------------------------------------------
         Command<CommandSourceStack> balance = ctx -> {
             ServerPlayer p = ctx.getSource().getPlayerOrException();
@@ -71,7 +71,7 @@ final class EconomyCommands {
         // --- sell to the system (unchanged: coal, iron, copper, gold, diamond, ...) ---
         d.register(Commands.literal("sell").executes(ctx -> {
             ServerPlayer p = ctx.getSource().getPlayerOrException();
-            SellMenu.open(p, cfg, eco);
+            SellMenu.open(p, cfg, eco, classes);
             return 1;
         }));
 
