@@ -155,11 +155,6 @@ public final class ClassMenu extends ChestMenu {
          return;
       }
 
-      if (this.isBedrockView()) {
-         for (int bg = 9; bg < 54; bg++) {
-            this.view.setItem(bg, Ui.named(Items.GRAY_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY));
-         }
-      }
 
       int economyIndex = 0;
       int combatIndex = 0;
@@ -256,12 +251,6 @@ public final class ClassMenu extends ChestMenu {
       if (def.skills().isEmpty()) {
          this.view.setItem(31, Ui.named(Items.PAPER, def.name() + " skill tree", ChatFormatting.YELLOW, "The skills of this class are coming soon."));
       } else {
-         if (isBedrock(this.viewer)) {
-            // no resource pack on Bedrock: plain gray backdrop so the skills stand out
-            for (int bg = 9; bg < 54; bg++) {
-               this.view.setItem(bg, Ui.named(Items.GRAY_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY));
-            }
-         }
 
          for (ClassDefs.Skill skill : def.skills()) {
             int slot = 9 + skill.row() * 9 + skill.col();
