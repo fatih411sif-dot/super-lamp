@@ -41,6 +41,7 @@ final class ClassCommands {
                            String oldId = StringArgumentType.getString(ctx, "old").toLowerCase();
                            String newId = StringArgumentType.getString(ctx, "new").toLowerCase();
                            String error = classes.replacePick(p.getUUID(), oldId, newId);
+                           RankManager.refresh(p);
                            if (error != null) {
                               Msg.err(p, error);
                               return 0;
@@ -146,6 +147,7 @@ final class ClassCommands {
       ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
       boolean had = classes.resetPlayer(target.getUUID());
       ClassEffects.forget(target);
+      RankManager.refresh(target);
       classes.save();
       if (!had) {
          ((CommandSourceStack)ctx.getSource()).sendFailure(Component.literal(Msg.name(target) + " has no class data to reset."));

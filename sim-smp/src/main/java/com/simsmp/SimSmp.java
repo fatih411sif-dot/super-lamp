@@ -36,6 +36,7 @@ public class SimSmp implements ModInitializer {
       classes.load();
       RankManager ranks = new RankManager(dir);
       ranks.load();
+      ranks.setClasses(classes);
       SidebarManager sidebar = new SidebarManager(cfg, eco, classes, ranks);
       TradeManager trades = new TradeManager(cfg, eco);
       MarketManager market = new MarketManager(cfg, eco, dir.resolve("market.json"));

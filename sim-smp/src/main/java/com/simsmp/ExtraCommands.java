@@ -27,9 +27,8 @@ final class ExtraCommands {
 
    static void register(CommandDispatcher<CommandSourceStack> d, RankManager ranks) {
       // ---- /rank ----
-      List<String> colorNames = RankManager.colorNames();
-
-      SuggestionProvider<CommandSourceStack> colors = (ctx, builder) -> SharedSuggestionProvider.suggest(colorNames, builder);
+      SuggestionProvider<CommandSourceStack> colors = (ctx, builder) -> SharedSuggestionProvider.suggest(RankManager.colorNames(), builder);
+      SuggestionProvider<CommandSourceStack> presets = (ctx, builder) -> SharedSuggestionProvider.suggest(RankManager.presetIds(), builder);
       LiteralArgumentBuilder<CommandSourceStack> rank = Commands.literal("rank");
       rank.executes(ctx -> {
          ServerPlayer p = ctx.getSource().getPlayerOrException();
@@ -41,9 +40,31 @@ final class ExtraCommands {
             return 0;
          }
       });
+
+      // /rank set <player> <owner|admin|mod|helper|builder|dev|youtube|twitch|staff|mvp|vip_plus|vip|player>
       LiteralArgumentBuilder<CommandSourceStack> set = Commands.literal("set");
       set.requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER)));
       set.then(
+         Commands.argument("player", EntityArgument.player())
+            .then(Commands.argument("rank", StringArgumentType.word()).suggests(presets).executes(ctx -> {
+               ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+               String id = StringArgumentType.getString(ctx, "rank").toLowerCase();
+               if (!ranks.setPreset(ctx.getSource().getServer(), target, id)) {
+                  ctx.getSource().sendFailure(Component.literal("Unknown rank '" + id + "'. Choose: " + String.join(", ", RankManager.presetIds())));
+                  return 0;
+               } else {
+                  ranks.save();
+                  ctx.getSource().sendSuccess(() -> Component.literal("Gave " + Msg.name(target) + " the rank " + id + "."), true);
+                  Msg.info(target, "You now have the rank " + ranks.rankName(target.getUUID()) + "!");
+                  return 1;
+               }
+            }))
+      );
+
+      // /rank custom <player> <color> <text>   - free-text rank, always plain colored text
+      LiteralArgumentBuilder<CommandSourceStack> custom = Commands.literal("custom");
+      custom.requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER)));
+      custom.then(
          Commands.argument("player", EntityArgument.player())
             .then(
                Commands.argument("color", StringArgumentType.word())
@@ -60,7 +81,7 @@ final class ExtraCommands {
                         ctx.getSource().sendFailure(Component.literal("Rank name must be 1-16 characters."));
                         return 0;
                      } else {
-                        ranks.set(ctx.getSource().getServer(), target, color, name);
+                        ranks.setCustom(ctx.getSource().getServer(), target, color, name);
                         ranks.save();
                         ctx.getSource().sendSuccess(() -> Component.literal("Gave " + Msg.name(target) + " the rank [" + name + "]."), true);
                         Msg.colored(target, "You now have the rank [" + name + "]!", color);
@@ -69,6 +90,7 @@ final class ExtraCommands {
                   }))
             )
       );
+
       LiteralArgumentBuilder<CommandSourceStack> clear = Commands.literal("clear");
       clear.requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER)));
       clear.then(Commands.argument("player", EntityArgument.player()).executes(ctx -> {
@@ -83,8 +105,28 @@ final class ExtraCommands {
             return 1;
          }
       }));
+
+      // /rank badges <on|off>  - badge icons (needs the resource pack) or plain [VIP] text
+      LiteralArgumentBuilder<CommandSourceStack> badges = Commands.literal("badges");
+      badges.requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER)));
+      badges.then(Commands.argument("mode", StringArgumentType.word())
+         .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(List.of("on", "off"), builder))
+         .executes(ctx -> {
+            String mode = StringArgumentType.getString(ctx, "mode").toLowerCase();
+            if (!mode.equals("on") && !mode.equals("off")) {
+               ctx.getSource().sendFailure(Component.literal("Use /rank badges on  or  /rank badges off"));
+               return 0;
+            } else {
+               ranks.setBadges(ctx.getSource().getServer(), mode.equals("on"));
+               ctx.getSource().sendSuccess(() -> Component.literal("Rank badges are now " + mode + "."), true);
+               return 1;
+            }
+         }));
+
       rank.then(set);
+      rank.then(custom);
       rank.then(clear);
+      rank.then(badges);
       d.register(rank);
 
       // ---- /jumpscare <players> (OP only) ----

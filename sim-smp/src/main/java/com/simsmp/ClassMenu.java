@@ -18,9 +18,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class ClassMenu extends ChestMenu {
-   private static final int SLOT_INFO = 4;
-   private static final int[] ECONOMY_SLOTS = new int[]{0, 1, 2, 3};
-   private static final int[] COMBAT_SLOTS = new int[]{5, 6, 7, 8};
+   private static final int SLOT_TREE = 7;
+   private static final int SLOT_INFO = 8;
+   private static final int SLOT_BACK = 0;
+   /** false = the class selection screen ("MAIN CLASSES"), true = the skill tree of the equipped class */
+   private boolean tree;
    private final SimpleContainer view;
    private final ServerPlayer viewer;
    private final ClassManager classes;
@@ -43,9 +45,46 @@ public final class ClassMenu extends ChestMenu {
     * U+E002 steps back and U+E200+classIndex*32+skillIndex draws that skill's gold frame and gold line.
     * (make_pack.py generates the textures with the same numbering.)
     */
-   static Component titleFor(ServerPlayer p, ClassManager classes) {
+   /** Bedrock players joining through Geyser/Floodgate have a UUID whose upper 64 bits are 0. They can't use the Java resource pack. */
+   static boolean isBedrock(ServerPlayer p) {
+      return p.getUUID().getMostSignificantBits() == 0L;
+   }
+
+   static Component titleFor(ServerPlayer p, ClassManager classes, boolean tree) {
+      if (isBedrock(p)) {
+         return Component.literal("Classes");
+      }
+
       UUID id = p.getUUID();
-      ClassDefs.ClassDef def = classes.setupDone(id) ? ClassDefs.get(classes.active(id)) : null;
+      boolean setup = classes.setupDone(id);
+      String active = classes.active(id);
+      if (!tree) {
+         // selection screen: U+E0F0 = panels, then one state overlay per class (U+E400 picked, U+E410 equipped, U+E420 dim)
+         StringBuilder sb = new StringBuilder();
+         sb.append('\ue001').append('\ue0f0');
+         List<ClassDefs.ClassDef> all = ClassDefs.all();
+
+         for (int ci = 0; ci < all.size(); ci++) {
+            String cid = all.get(ci).id();
+            boolean picked = classes.isPicked(id, cid);
+            int glyph;
+            if (setup && cid.equals(active)) {
+               glyph = 0xE410 + ci;
+            } else if (picked) {
+               glyph = 0xE400 + ci;
+            } else if (setup) {
+               glyph = 0xE420 + ci;
+            } else {
+               continue;
+            }
+
+            sb.append('\ue002').append((char)glyph);
+         }
+
+         return Component.literal(sb.toString()).withStyle(ChatFormatting.WHITE);
+      }
+
+      ClassDefs.ClassDef def = setup ? ClassDefs.get(active) : null;
       if (def == null || def.skills().isEmpty()) {
          return Component.literal("Classes");
       } else {
@@ -65,12 +104,32 @@ public final class ClassMenu extends ChestMenu {
    }
 
    public static void open(ServerPlayer player, ClassManager classes, SimConfig cfg) {
+      open(player, classes, cfg, false);
+   }
+
+   public static void open(ServerPlayer player, ClassManager classes, SimConfig cfg, boolean tree) {
       SimpleContainer view = new SimpleContainer(54);
       player.openMenu(new SimpleMenuProvider((id, inv, p) -> {
          ClassMenu menu = new ClassMenu(id, inv, view, player, classes, cfg);
+         menu.tree = tree;
          menu.refresh();
          return menu;
-      }, titleFor(player, classes)));
+      }, titleFor(player, classes, tree)));
+   }
+
+   /** Java: re-open so the title (the drawn background) updates. Bedrock: just refresh the items. */
+   private void redraw() {
+      if (isBedrock(this.viewer)) {
+         this.refresh();
+      } else {
+         ClassMenu.open(this.viewer, this.classes, this.cfg, this.tree);
+      }
+   }
+
+   private void switchMode(boolean toTree) {
+      this.tree = toTree;
+      this.pending = null;
+      this.redraw();
    }
 
    private void refresh() {
@@ -83,39 +142,57 @@ public final class ClassMenu extends ChestMenu {
       UUID id = this.viewer.getUUID();
       boolean setup = this.classes.setupDone(id);
       String active = this.classes.active(id);
+      ClassDefs.ClassDef activeDef = setup ? ClassDefs.get(active) : null;
+      if (this.tree && (activeDef == null || activeDef.skills().isEmpty())) {
+         this.tree = false;
+      }
+
+      this.view.setItem(SLOT_INFO, this.infoIcon(id, setup, active));
+      if (this.tree) {
+         this.slotClass[SLOT_BACK] = "@back";
+         this.view.setItem(SLOT_BACK, Ui.named(Items.ARROW, "Back to classes", ChatFormatting.YELLOW, "Return to the class selection."));
+         this.drawTree(id, activeDef);
+         return;
+      }
+
+      if (this.isBedrockView()) {
+         for (int bg = 9; bg < 54; bg++) {
+            this.view.setItem(bg, Ui.named(Items.GRAY_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY));
+         }
+      }
+
       int economyIndex = 0;
       int combatIndex = 0;
 
       for (ClassDefs.ClassDef def : ClassDefs.all()) {
-         int slot = def.category() == ClassDefs.Category.ECONOMY ? ECONOMY_SLOTS[economyIndex++] : COMBAT_SLOTS[combatIndex++];
-         this.slotClass[slot] = def.id();
-         this.view.setItem(slot, this.classIcon(id, def, setup, active));
+         if (def.category() == ClassDefs.Category.ECONOMY) {
+            // 3 wide x 2 tall panel, icon in the top middle cell
+            int col = economyIndex++ * 3;
+            for (int r = 1; r <= 2; r++) {
+               for (int c = 0; c < 3; c++) {
+                  this.slotClass[r * 9 + col + c] = def.id();
+                  this.view.setItem(r * 9 + col + c, ItemStack.EMPTY);
+               }
+            }
+
+            this.view.setItem(9 + col + 1, this.classIcon(id, def, setup, active));
+         } else {
+            // 1 wide x 2 tall panel
+            int col = combatIndex++ * 2;
+            this.slotClass[36 + col] = def.id();
+            this.slotClass[45 + col] = def.id();
+            this.view.setItem(36 + col, this.classIcon(id, def, setup, active));
+         }
       }
 
-      this.view.setItem(4, this.infoIcon(id, setup, active));
-      if (setup && !active.isEmpty()) {
-         this.drawTree(id, ClassDefs.get(active));
-      } else if (!setup) {
-         this.view
-            .setItem(
-               31,
-               Ui.named(
-                  Items.PAPER,
-                  "Pick your classes",
-                  ChatFormatting.YELLOW,
-                  "Choose 2 Economy and 2 Combat classes in the top row.",
-                  "Click a class to pick it, click again to un-pick it."
-               )
-            );
-      } else {
-         this.view
-            .setItem(
-               31,
-               Ui.named(
-                  Items.PAPER, "No class equipped", ChatFormatting.YELLOW, "Click one of your classes twice to equip it.", "Its skill tree will show up here."
-               )
-            );
+      if (setup && activeDef != null && !activeDef.skills().isEmpty()) {
+         this.slotClass[SLOT_TREE] = "@tree";
+         this.view.setItem(SLOT_TREE, Ui.named(Items.BOOK, "Skill tree", ChatFormatting.AQUA, "Open the skill tree of " + activeDef.name() + "."));
       }
+   }
+
+   private boolean isBedrockView() {
+      return isBedrock(this.viewer);
    }
 
    private ItemStack classIcon(UUID id, ClassDefs.ClassDef def, boolean setup, String active) {
@@ -179,6 +256,13 @@ public final class ClassMenu extends ChestMenu {
       if (def.skills().isEmpty()) {
          this.view.setItem(31, Ui.named(Items.PAPER, def.name() + " skill tree", ChatFormatting.YELLOW, "The skills of this class are coming soon."));
       } else {
+         if (isBedrock(this.viewer)) {
+            // no resource pack on Bedrock: plain gray backdrop so the skills stand out
+            for (int bg = 9; bg < 54; bg++) {
+               this.view.setItem(bg, Ui.named(Items.GRAY_STAINED_GLASS_PANE, " ", ChatFormatting.GRAY));
+            }
+         }
+
          for (ClassDefs.Skill skill : def.skills()) {
             int slot = 9 + skill.row() * 9 + skill.col();
             if (slot >= 9 && slot <= 53) {
@@ -238,6 +322,14 @@ public final class ClassMenu extends ChestMenu {
    }
 
    private void clickClass(String classId) {
+      if (classId.equals("@tree")) {
+         this.switchMode(true);
+         return;
+      } else if (classId.equals("@back")) {
+         this.switchMode(false);
+         return;
+      }
+
       UUID id = this.viewer.getUUID();
       ClassDefs.ClassDef def = ClassDefs.get(classId);
       if (def != null) {
@@ -261,7 +353,11 @@ public final class ClassMenu extends ChestMenu {
                   + ", the old class goes back to level 0)."
             );
          } else if (classId.equals(this.classes.active(id))) {
-            Msg.info(this.viewer, def.name() + " is already equipped.");
+            if (def.skills().isEmpty()) {
+               Msg.info(this.viewer, def.name() + " is already equipped.");
+            } else {
+               this.switchMode(true);
+            }
          } else {
             String key = "class:" + classId;
             if (!key.equals(this.pending)) {
@@ -274,9 +370,13 @@ public final class ClassMenu extends ChestMenu {
                   Msg.err(this.viewer, error);
                } else {
                   Msg.ok(this.viewer, "You are now a " + def.name() + ".");
+                  RankManager.refresh(this.viewer);
+                  if (!def.skills().isEmpty()) {
+                     this.tree = true;
+                  }
                }
 
-               ClassMenu.open(this.viewer, this.classes, this.cfg);
+               this.redraw();
             }
          }
       }
@@ -307,7 +407,7 @@ public final class ClassMenu extends ChestMenu {
                      Msg.ok(this.viewer, "Unlocked " + skill.name() + "!");
                   }
 
-                  ClassMenu.open(this.viewer, this.classes, this.cfg);
+                  this.redraw();
                }
             }
          }
