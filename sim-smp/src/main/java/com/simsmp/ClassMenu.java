@@ -301,6 +301,13 @@ public final class ClassMenu extends ChestMenu {
    }
 
    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+      String kind = clickType.name();
+      if (kind.equals("SWAP") || kind.equals("QUICK_MOVE")) {
+         // the client already moved an item in its own copy of the menu; re-open to put everything back
+         this.redraw();
+         return;
+      }
+
       if (clickType == ContainerInput.PICKUP && slotId >= 0 && slotId < 54) {
          if (this.slotClass[slotId] != null) {
             this.clickClass(this.slotClass[slotId]);

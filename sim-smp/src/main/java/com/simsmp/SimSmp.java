@@ -37,6 +37,8 @@ public class SimSmp implements ModInitializer {
       RankManager ranks = new RankManager(dir);
       ranks.load();
       ranks.setClasses(classes);
+      MusicManager music = new MusicManager(dir);
+      music.load();
       SidebarManager sidebar = new SidebarManager(cfg, eco, classes, ranks);
       TradeManager trades = new TradeManager(cfg, eco);
       MarketManager market = new MarketManager(cfg, eco, dir.resolve("market.json"));
@@ -51,6 +53,7 @@ public class SimSmp implements ModInitializer {
          RedeemCommands.register(dispatcher, redeem);
          ClassCommands.register(dispatcher, classes, cfg);
          ExtraCommands.register(dispatcher, ranks);
+         music.register(dispatcher);
       });
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -67,11 +70,13 @@ public class SimSmp implements ModInitializer {
          eco.rememberName(player.getUUID(), Msg.name(player));
          ranks.apply(server, player);
          sidebar.show(server, player);
+         music.onJoin(player);
       });
       ServerPlayConnectionEvents.DISCONNECT.register((Disconnect)(handler, server) -> {
          ServerPlayer player = handler.getPlayer();
          trades.playerLeft(player);
          sidebar.forget(player);
+         music.forget(player);
          ClassEffects.forget(player);
       });
       int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
@@ -82,6 +87,7 @@ public class SimSmp implements ModInitializer {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                sidebar.update(server, p);
                ClassEffects.update(p, classes);
+               music.update(p);
             }
          }
 
