@@ -37,6 +37,8 @@ public class SimSmp implements ModInitializer {
       RankManager ranks = new RankManager(dir);
       ranks.load();
       ranks.setClasses(classes);
+      CasinoManager casino = new CasinoManager(dir, eco);
+      casino.load();
       MusicManager music = new MusicManager(dir);
       music.load();
       SidebarManager sidebar = new SidebarManager(cfg, eco, classes, ranks);
@@ -54,6 +56,7 @@ public class SimSmp implements ModInitializer {
          ClassCommands.register(dispatcher, classes, cfg);
          ExtraCommands.register(dispatcher, ranks);
          music.register(dispatcher);
+         casino.register(dispatcher);
       });
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -77,18 +80,22 @@ public class SimSmp implements ModInitializer {
          trades.playerLeft(player);
          sidebar.forget(player);
          music.forget(player);
+         casino.playerLeft(player);
          ClassEffects.forget(player);
       });
       int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
       ServerTickEvents.END_SERVER_TICK.register((EndTick)server -> {
          this.tickCounter++;
          GachaMenu.tickAll();
+         CasinoMenu.tickAll();
          if (this.tickCounter % 20 == 0) {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                sidebar.update(server, p);
                ClassEffects.update(p, classes);
                music.update(p);
             }
+
+            casino.tick(server);
          }
 
          if (this.tickCounter % saveEvery == 0) {
