@@ -24,8 +24,13 @@ public final class TopMenu extends ChestMenu {
    private static final int SLOT_THIRD = 11;
    private static final int SLOT_YOU = 22;
 
-   private TopMenu(int id, Inventory inv, SimpleContainer view) {
+   private final ServerPlayer viewer;
+   private final EconomyManager eco;
+
+   private TopMenu(int id, Inventory inv, SimpleContainer view, ServerPlayer viewer, EconomyManager eco) {
       super(MenuType.GENERIC_9x4, id, inv, view, 4);
+      this.viewer = viewer;
+      this.eco = eco;
    }
 
    /** Java players with the resource pack get a drawn podium (glyph U+E600); Bedrock gets the plain title. */
@@ -49,7 +54,7 @@ public final class TopMenu extends ChestMenu {
       }
 
       Component title = bedrock ? Component.literal("Top 3 Richest") : Component.literal("\ue001\ue600").withStyle(ChatFormatting.WHITE);
-      player.openMenu(new SimpleMenuProvider((id, inv, p) -> new TopMenu(id, inv, view), title));
+      player.openMenu(new SimpleMenuProvider((id, inv, p) -> new TopMenu(id, inv, view, player, eco), title));
    }
 
    private static ItemStack rank(EconomyManager eco, List<Entry<UUID, Long>> top, int index, Item item, ChatFormatting color) {
@@ -62,5 +67,9 @@ public final class TopMenu extends ChestMenu {
    }
 
    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+      // nothing to click here; if the client moved an item in its own copy, re-open so everything matches again
+      if (slotId >= 0 && (slotId >= 36 || !clickType.name().startsWith("PICKUP"))) {
+         open(this.viewer, this.eco);
+      }
    }
 }

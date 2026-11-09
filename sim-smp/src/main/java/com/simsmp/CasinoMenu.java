@@ -166,7 +166,10 @@ public final class CasinoMenu extends ChestMenu {
 
       this.view.setItem(2 * 9 + 1, coin);
       this.view.setItem(2 * 9 + 4, dice);
-      this.view.setItem(2 * 9 + 7, roul);
+      if (bedrock(this.viewer)) {
+         // Java players see the drawn wheel instead of an item (an item would cover the hub)
+         this.view.setItem(2 * 9 + 7, roul);
+      }
    }
 
    private EconomyManager eco() {

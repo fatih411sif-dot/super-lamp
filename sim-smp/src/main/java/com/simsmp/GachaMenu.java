@@ -373,8 +373,13 @@ public final class GachaMenu extends ChestMenu {
    }
 
    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
-      if (clickType == ContainerInput.PICKUP && slotId >= 0 && slotId < ROWS * 9 && this.slotPull[slotId] > 0) {
+      String kind = clickType.name();
+      boolean pick = kind.equals("PICKUP") || kind.equals("PICKUP_ALL");
+      if (pick && slotId >= 0 && slotId < ROWS * 9 && this.slotPull[slotId] > 0) {
          this.startPull(this.slotPull[slotId]);
+      } else if (slotId >= 0 && (slotId >= ROWS * 9 || !pick) && (this.session == null || this.session.done)) {
+         // the client moved an item in its own copy of the menu: re-open to put everything back
+         openWith(this.viewer, this.gacha, this.eco, this.cfg, this.session);
       }
    }
 

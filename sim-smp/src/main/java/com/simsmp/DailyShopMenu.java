@@ -1,5 +1,7 @@
 package com.simsmp;
 
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -15,115 +17,121 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * /dshop window. Offers sit in a 5-wide block in the middle (up to 25); the bottom row shows
- * the balance and the time until the next refresh. Click an item twice to buy it.
- * Every click is handled here, so nothing can be moved in or out of the window.
- */
 public final class DailyShopMenu extends ChestMenu {
-    private static final int SLOT_INFO = 49;
+   private static final int SLOT_INFO = 49;
+   private final SimpleContainer view;
+   private final ServerPlayer viewer;
+   private final DailyShop shop;
+   private final EconomyManager eco;
+   private final String[] slotOffer = new String[54];
+   private String pending;
 
-    private final SimpleContainer view;
-    private final ServerPlayer viewer;
-    private final DailyShop shop;
-    private final EconomyManager eco;
-    private final String[] slotOffer = new String[54];
-    private String pending;
+   private DailyShopMenu(int id, Inventory inv, SimpleContainer view, ServerPlayer viewer, DailyShop shop, EconomyManager eco) {
+      super(MenuType.GENERIC_9x6, id, inv, view, 6);
+      this.view = view;
+      this.viewer = viewer;
+      this.shop = shop;
+      this.eco = eco;
+   }
 
-    private DailyShopMenu(int id, Inventory inv, SimpleContainer view, ServerPlayer viewer, DailyShop shop, EconomyManager eco) {
-        super(MenuType.GENERIC_9x6, id, inv, view, 6);
-        this.view = view;
-        this.viewer = viewer;
-        this.shop = shop;
-        this.eco = eco;
-    }
+   public static void open(ServerPlayer player, DailyShop shop, EconomyManager eco) {
+      SimpleContainer view = new SimpleContainer(54);
+      player.openMenu(new SimpleMenuProvider((id, inv, p) -> {
+         DailyShopMenu menu = new DailyShopMenu(id, inv, view, player, shop, eco);
+         menu.refresh();
+         return menu;
+      }, Component.literal("Daily Shop")));
+   }
 
-    public static void open(ServerPlayer player, DailyShop shop, EconomyManager eco) {
-        SimpleContainer view = new SimpleContainer(54);
-        player.openMenu(new SimpleMenuProvider((id, inv, p) -> {
-            DailyShopMenu menu = new DailyShopMenu(id, inv, view, player, shop, eco);
-            menu.refresh();
-            return menu;
-        }, Component.literal("Daily Shop")));
-    }
+   private static int slotFor(int index) {
+      return index / 5 * 9 + 2 + index % 5;
+   }
 
-    private static int slotFor(int index) {
-        return (index / 5) * 9 + 2 + (index % 5);
-    }
+   static String duration(long millis) {
+      long totalMinutes = Math.max(0L, millis) / 60000L;
+      long h = totalMinutes / 60L;
+      long m = totalMinutes % 60L;
+      return h > 0L ? h + "h " + m + "m" : m + "m";
+   }
 
-    static String duration(long millis) {
-        long totalMinutes = Math.max(0, millis) / 60_000L;
-        long h = totalMinutes / 60;
-        long m = totalMinutes % 60;
-        return h > 0 ? h + "h " + m + "m" : m + "m";
-    }
+   private void refresh() {
+      for (int s = 0; s < 54; s++) {
+         this.view.setItem(s, ItemStack.EMPTY);
+         this.slotOffer[s] = null;
+      }
 
-    private void refresh() {
-        for (int s = 0; s < 54; s++) {
-            view.setItem(s, ItemStack.EMPTY);
-            slotOffer[s] = null;
-        }
-        ItemStack filler = TradeManager.named(Items.PAPER, " ", ChatFormatting.GRAY, null);
-        for (int c = 45; c < 54; c++) view.setItem(c, filler.copy());
+      ItemStack filler = TradeManager.named(Items.PAPER, " ", ChatFormatting.GRAY, null);
 
-        List<DailyShop.Offer> offers = shop.offers();
-        for (int i = 0; i < offers.size(); i++) {
-            DailyShop.Offer o = offers.get(i);
-            int slot = slotFor(i);
-            slotOffer[slot] = o.id();
-            if (shop.isSold(o.id())) {
-                view.setItem(slot, TradeManager.named(Items.BARRIER, "Sold out", ChatFormatting.RED,
-                        o.stack().getHoverName().getString()));
+      for (int c = 45; c < 54; c++) {
+         this.view.setItem(c, filler.copy());
+      }
+
+      List<DailyShop.Offer> offers = this.shop.offers();
+
+      for (int i = 0; i < offers.size(); i++) {
+         DailyShop.Offer o = offers.get(i);
+         int slot = slotFor(i);
+         this.slotOffer[slot] = o.id();
+         if (this.shop.isSold(o.id())) {
+            this.view.setItem(slot, TradeManager.named(Items.BARRIER, "Sold out", ChatFormatting.RED, o.stack().getHoverName().getString()));
+         } else {
+            this.view.setItem(slot, this.display(o));
+         }
+      }
+
+      this.view
+         .setItem(
+            49,
+            TradeManager.named(
+               Items.CLOCK,
+               "New items in " + duration(this.shop.millisUntilRefresh()),
+               ChatFormatting.AQUA,
+               "Balance: " + this.eco.fmt(this.eco.get(this.viewer.getUUID())) + "  |  Same shop for everyone - first to buy wins"
+            )
+         );
+   }
+
+   private ItemStack display(DailyShop.Offer o) {
+      ItemStack copy = o.stack().copy();
+      List<Component> lines = new ArrayList<>();
+      ItemLore old = (ItemLore)copy.get(DataComponents.LORE);
+      if (old != null) {
+         lines.addAll(old.lines());
+      }
+
+      lines.add(Component.literal(" "));
+      lines.add(Component.literal("Price: " + this.eco.fmt(o.price())).withStyle(ChatFormatting.GOLD).withStyle(st -> st.withItalic(false)));
+      lines.add(Component.literal("Click twice to buy").withStyle(ChatFormatting.GREEN).withStyle(st -> st.withItalic(false)));
+      copy.set(DataComponents.LORE, new ItemLore(lines));
+      return copy;
+   }
+
+   public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+      if (clickType == ContainerInput.PICKUP && slotId >= 0 && slotId < 54) {
+         String id = this.slotOffer[slotId];
+         if (id != null) {
+            if (this.shop.isSold(id)) {
+               Msg.err(this.viewer, "Too late - someone else already bought that.");
+               this.pending = null;
+               this.refresh();
+            } else if (id.equals(this.pending)) {
+               this.pending = null;
+               this.shop.buy(this.viewer, id);
+               this.refresh();
             } else {
-                view.setItem(slot, display(o));
+               this.pending = id;
+
+               for (DailyShop.Offer o : this.shop.offers()) {
+                  if (o.id().equals(id)) {
+                     Msg.info(
+                        this.viewer,
+                        "Click again to buy " + o.stack().getCount() + "x " + o.stack().getHoverName().getString() + " for " + this.eco.fmt(o.price()) + "."
+                     );
+                     break;
+                  }
+               }
             }
-        }
-
-        view.setItem(SLOT_INFO, TradeManager.named(Items.CLOCK, "New items in " + duration(shop.millisUntilRefresh()),
-                ChatFormatting.AQUA, "Balance: " + eco.fmt(eco.get(viewer.getUUID())) + "  |  Same shop for everyone - first to buy wins"));
-    }
-
-    private ItemStack display(DailyShop.Offer o) {
-        ItemStack copy = o.stack().copy();
-        List<Component> lines = new ArrayList<>();
-        ItemLore old = copy.get(DataComponents.LORE);
-        if (old != null) lines.addAll(old.lines());
-        lines.add(Component.literal(" "));
-        lines.add(Component.literal("Price: " + eco.fmt(o.price())).withStyle(ChatFormatting.GOLD).withStyle(st -> st.withItalic(false)));
-        lines.add(Component.literal("Click twice to buy").withStyle(ChatFormatting.GREEN).withStyle(st -> st.withItalic(false)));
-        copy.set(DataComponents.LORE, new ItemLore(lines));
-        return copy;
-    }
-
-    @Override
-    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
-        // Only plain clicks inside the window. Everything else is ignored.
-        if (clickType != ContainerInput.PICKUP || slotId < 0 || slotId >= 54) return;
-        String id = slotOffer[slotId];
-        if (id == null) return;
-
-        if (shop.isSold(id)) {
-            Msg.err(viewer, "Too late - someone else already bought that.");
-            pending = null;
-            refresh();
-            return;
-        }
-        if (!id.equals(pending)) {
-            pending = id;
-            for (DailyShop.Offer o : shop.offers()) {
-                if (o.id().equals(id)) {
-                    Msg.info(viewer, "Click again to buy " + o.stack().getCount() + "x "
-                            + o.stack().getHoverName().getString() + " for " + eco.fmt(o.price()) + ".");
-                    break;
-                }
-            }
-            return;
-        }
-        pending = null;
-        shop.buy(viewer, id);
-        refresh();
-    }
+         }
+      }
+   }
 }

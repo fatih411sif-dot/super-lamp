@@ -160,24 +160,17 @@ public final class ClassMenu extends ChestMenu {
       int combatIndex = 0;
 
       for (ClassDefs.ClassDef def : ClassDefs.all()) {
-         if (def.category() == ClassDefs.Category.ECONOMY) {
-            // 3 wide x 2 tall panel, icon in the top middle cell
-            int col = economyIndex++ * 3;
-            for (int r = 1; r <= 2; r++) {
-               for (int c = 0; c < 3; c++) {
-                  this.slotClass[r * 9 + col + c] = def.id();
-                  this.view.setItem(r * 9 + col + c, ItemStack.EMPTY);
-               }
+         // every class is a panel of 2x2 cells: economy in container rows 1-2, combat in rows 4-5; the icon is the top-left cell
+         boolean economy = def.category() == ClassDefs.Category.ECONOMY;
+         int col = (economy ? economyIndex++ : combatIndex++) * 2;
+         int row = economy ? 1 : 4;
+         for (int r = 0; r < 2; r++) {
+            for (int c = 0; c < 2; c++) {
+               this.slotClass[(row + r) * 9 + col + c] = def.id();
             }
-
-            this.view.setItem(9 + col + 1, this.classIcon(id, def, setup, active));
-         } else {
-            // 1 wide x 2 tall panel
-            int col = combatIndex++ * 2;
-            this.slotClass[36 + col] = def.id();
-            this.slotClass[45 + col] = def.id();
-            this.view.setItem(36 + col, this.classIcon(id, def, setup, active));
          }
+
+         this.view.setItem(row * 9 + col, this.classIcon(id, def, setup, active));
       }
 
       if (setup && activeDef != null && !activeDef.skills().isEmpty()) {
@@ -302,13 +295,16 @@ public final class ClassMenu extends ChestMenu {
 
    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
       String kind = clickType.name();
-      if (kind.equals("SWAP") || kind.equals("QUICK_MOVE")) {
-         // the client already moved an item in its own copy of the menu; re-open to put everything back
+      boolean pick = kind.equals("PICKUP") || kind.equals("PICKUP_ALL");
+      boolean handled = pick && slotId >= 0 && slotId < 54 && (this.slotClass[slotId] != null || this.slotSkill[slotId] != null);
+      if (!handled && slotId >= 0 && (slotId >= 54 || !pick)) {
+         // the client already moved an item in its own copy of the menu (inventory click, shift-click, number key, double click);
+         // re-open so everything is put back
          this.redraw();
          return;
       }
 
-      if (clickType == ContainerInput.PICKUP && slotId >= 0 && slotId < 54) {
+      if (handled) {
          if (this.slotClass[slotId] != null) {
             this.clickClass(this.slotClass[slotId]);
          } else if (this.slotSkill[slotId] != null) {

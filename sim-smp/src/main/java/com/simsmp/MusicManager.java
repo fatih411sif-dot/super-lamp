@@ -32,7 +32,7 @@ public final class MusicManager {
    private final Path offFile;
    private boolean enabled = true;
    private String sound = "sim_smp:kingdom_dance";
-   private int seconds = 180;
+   private int seconds = 157;
    private int delay = 5;
    private final Set<UUID> off = new HashSet<>();
    /** player -> epoch millis when the track is started again */
@@ -55,7 +55,7 @@ public final class MusicManager {
 
             this.enabled = Boolean.parseBoolean(p.getProperty("enabled", "true").trim());
             this.sound = p.getProperty("sound", this.sound).trim();
-            this.seconds = Math.max(5, Integer.parseInt(p.getProperty("seconds", "180").trim()));
+            this.seconds = Math.max(5, Integer.parseInt(p.getProperty("seconds", "157").trim()));
             this.delay = Math.max(0, Integer.parseInt(p.getProperty("delay", "5").trim()));
          } else {
             Properties p = new Properties();
