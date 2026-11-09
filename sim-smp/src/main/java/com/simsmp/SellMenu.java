@@ -43,8 +43,8 @@ public final class SellMenu extends ChestMenu {
       if (!this.settled && player instanceof ServerPlayer sp) {
          this.settled = true;
          long total = 0L;
-         LinkedHashMap sold = new LinkedHashMap();
-         ArrayList unsellable = new ArrayList();
+         LinkedHashMap<String, Integer> sold = new LinkedHashMap<>();
+         ArrayList<ItemStack> unsellable = new ArrayList<>();
 
          for (int sb = 0; sb < this.box.getContainerSize(); sb++) {
             ItemStack stack = this.box.getItem(sb);

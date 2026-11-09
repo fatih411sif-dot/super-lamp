@@ -138,7 +138,10 @@ public final class EconomyManager {
    public List<Entry<UUID, Long>> top(int n) {
       List<Entry<UUID, Long>> all = new ArrayList<>();
       this.balances.forEach((k, v) -> all.add(new SimpleEntry<>(k, v)));
-      all.sort(Comparator.comparingLong(Entry::getValue).reversed().thenComparing(e -> e.getKey().toString()));
+      all.sort((x, y) -> {
+         int c = Long.compare(y.getValue(), x.getValue());
+         return c != 0 ? c : x.getKey().toString().compareTo(y.getKey().toString());
+      });
       return (List<Entry<UUID, Long>>)(all.size() > n ? new ArrayList<>(all.subList(0, n)) : all);
    }
 
