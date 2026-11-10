@@ -37,6 +37,8 @@ public class SimSmp implements ModInitializer {
       RankManager ranks = new RankManager(dir);
       ranks.load();
       ranks.setClasses(classes);
+      DuelManager duel = new DuelManager(dir, eco);
+      duel.load();
       CasinoManager casino = new CasinoManager(dir, eco);
       casino.load();
       MusicManager music = new MusicManager(dir);
@@ -57,9 +59,12 @@ public class SimSmp implements ModInitializer {
          ExtraCommands.register(dispatcher, ranks);
          music.register(dispatcher);
          casino.register(dispatcher);
+         duel.register(dispatcher);
       });
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
+      ServerLifecycleEvents.SERVER_STARTED.register(duel::prepareArena);
+      net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> duel.onFatalDamage(entity));
       PlayerBlockBreakEvents.AFTER.register((After)(level, player, pos, state, blockEntity) -> {
          if (player instanceof ServerPlayer sp) {
             ClassEffects.onBlockBroken(sp, level, pos, state, classes, cfg);
@@ -74,6 +79,7 @@ public class SimSmp implements ModInitializer {
          ranks.apply(server, player);
          sidebar.show(server, player);
          music.onJoin(player);
+         duel.onJoin(player);
       });
       ServerPlayConnectionEvents.DISCONNECT.register((Disconnect)(handler, server) -> {
          ServerPlayer player = handler.getPlayer();
@@ -81,6 +87,7 @@ public class SimSmp implements ModInitializer {
          sidebar.forget(player);
          music.forget(player);
          casino.playerLeft(player);
+         duel.playerLeft(player);
          ClassEffects.forget(player);
       });
       int saveEvery = 20 * Math.max(10, cfg.saveIntervalSeconds);
@@ -96,6 +103,7 @@ public class SimSmp implements ModInitializer {
             }
 
             casino.tick(server);
+            duel.tick(server);
          }
 
          if (this.tickCounter % saveEvery == 0) {
