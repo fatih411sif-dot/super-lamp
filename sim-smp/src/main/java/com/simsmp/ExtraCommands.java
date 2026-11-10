@@ -129,6 +129,34 @@ final class ExtraCommands {
       rank.then(badges);
       d.register(rank);
 
+      // ---- /lukisan <name> (OP only): gives a custom painting item, e.g. /lukisan foto_2 ----
+      d.register(
+         (LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("lukisan")
+               .requires(Commands.hasPermission(new Require(Permissions.COMMANDS_GAMEMASTER))))
+            .then(
+               Commands.argument("name", StringArgumentType.word())
+                  .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(List.of("foto_2", "photo"), builder))
+                  .executes(ctx -> {
+                     ServerPlayer p = ((CommandSourceStack)ctx.getSource()).getPlayerOrException();
+                     String name = StringArgumentType.getString(ctx, "name").toLowerCase();
+                     if (!name.matches("[a-z0-9_]+")) {
+                        ((CommandSourceStack)ctx.getSource()).sendFailure(Component.literal("Invalid painting name."));
+                        return 0;
+                     }
+
+                     net.minecraft.server.MinecraftServer server = ((CommandSourceStack)ctx.getSource()).getServer();
+                     server.getCommands()
+                        .performPrefixedCommand(
+                           server.createCommandSourceStack().withSuppressedOutput(),
+                           "give " + p.getUUID() + " minecraft:painting[minecraft:painting/variant=\"sim_smp:" + name + "\"] 1"
+                        );
+                     ((CommandSourceStack)ctx.getSource())
+                        .sendSuccess(() -> Component.literal("Gave you the painting " + name + ". Place it on a free wall (the size of the painting must fit)."), false);
+                     return 1;
+                  })
+            )
+      );
+
       // ---- /jumpscare <players> (OP only) ----
       d.register(
          (LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("jumpscare")
