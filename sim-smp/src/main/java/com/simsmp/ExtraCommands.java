@@ -26,6 +26,17 @@ final class ExtraCommands {
    }
 
    static void register(CommandDispatcher<CommandSourceStack> d, RankManager ranks) {
+      // ---- /hierarchy (medieval ladder GUI) ----
+      for (String alias : new String[]{"hierarchy", "kingdom"}) {
+         d.register(Commands.literal(alias).executes(ctx -> {
+            HierarchyMenu.open(ctx.getSource().getPlayerOrException(), ranks);
+            return 1;
+         }).then(Commands.literal("tree").executes(ctx -> {
+            HierarchyTreeMenu.open(ctx.getSource().getPlayerOrException(), ranks);
+            return 1;
+         })));
+      }
+
       // ---- /rank ----
       SuggestionProvider<CommandSourceStack> colors = (ctx, builder) -> SharedSuggestionProvider.suggest(RankManager.colorNames(), builder);
       SuggestionProvider<CommandSourceStack> presets = (ctx, builder) -> SharedSuggestionProvider.suggest(RankManager.presetIds(), builder);

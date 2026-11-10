@@ -37,20 +37,20 @@ public final class RankManager {
    private static final String TEAM_PREFIX = "sr_";
    /** id, label, text color. The ORDER is the glyph number: U+E300 + index. */
    private static final String[][] PRESETS = new String[][]{
-      {"owner", "OWNER", "aqua"},
-      {"admin", "ADMIN", "blue"},
-      {"mod", "MOD", "green"},
-      {"helper", "HELPER", "light_purple"},
-      {"builder", "BUILDER", "dark_green"},
-      {"dev", "DEV", "dark_purple"},
-      {"youtube", "YOUTUBE", "red"},
-      {"twitch", "TWITCH", "dark_purple"},
-      {"staff", "STAFF", "gold"},
-      {"mvp", "MVP", "gold"},
-      {"vip_plus", "VIP+", "light_purple"},
-      {"vip", "VIP", "yellow"},
-      {"player", "PLAYER", "gray"},
-      {"tester", "TESTER", "aqua"},
+      // ---- medieval hierarchy (highest to lowest), given with /rank set or the /hierarchy menu
+      {"king", "KING", "gold"},
+      {"queen", "QUEEN", "light_purple"},
+      {"prince", "PRINCE", "aqua"},
+      {"duke", "DUKE", "red"},
+      {"paladin", "PALADIN", "aqua"},
+      {"lord", "LORD", "green"},
+      {"count", "COUNT", "blue"},
+      {"baron", "BARON", "dark_aqua"},
+      {"knight", "KNIGHT", "white"},
+      {"squire", "SQUIRE", "dark_green"},
+      {"merchant", "MERCHANT", "yellow"},
+      {"peasant", "PEASANT", "gray"},
+      {"bandit", "BANDIT", "dark_red"},
       // ---- class ranks: from here on they are shown automatically for the class a player has equipped (ids = class ids)
       {"miner", "MINER", "gray"},
       {"farmer", "FARMER", "green"},
@@ -62,7 +62,7 @@ public final class RankManager {
       {"mage", "MAGE", "light_purple"}
    };
    /** the first MANUAL_PRESETS entries can be given with /rank set; the rest follow the player's class */
-   private static final int MANUAL_PRESETS = 14;
+   private static final int MANUAL_PRESETS = 13;
    private static RankManager instance;
    private ClassManager classes;
    private final Path file;
@@ -124,7 +124,9 @@ public final class RankManager {
             if (raw != null) {
                for (Map.Entry<String, RankManager.Rank> e : raw.entrySet()) {
                   try {
-                     if (e.getValue() != null && e.getValue().name != null && !e.getValue().name.isBlank()) {
+                     RankManager.Rank rk = e.getValue();
+                     boolean oldPreset = rk != null && rk.preset != null && presetIndex(rk.preset) < 0;   // removed old roles (owner, vip...) are dropped
+                     if (rk != null && !oldPreset && rk.name != null && !rk.name.isBlank()) {
                         this.ranks.put(UUID.fromString(e.getKey()), e.getValue());
                      }
                   } catch (IllegalArgumentException var5) {
@@ -196,6 +198,12 @@ public final class RankManager {
 
    public synchronized boolean has(UUID id) {
       return this.effective(id) != null;
+   }
+
+   /** preset id of the shown rank (null for none or a custom one) */
+   public synchronized String presetOf(UUID id) {
+      RankManager.Rank r = this.effective(id);
+      return r == null ? null : r.preset;
    }
 
    public synchronized String rankName(UUID id) {
