@@ -29,7 +29,11 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -103,6 +107,8 @@ public final class DuelManager {
    private final Set<UUID> watchers = new HashSet<>();
    private final Map<UUID, Challenge> challenges = new HashMap<>();
    private long buildAt;
+   private boolean tpChecked;
+   private long selectStart;
    private boolean built;
 
    public DuelManager(Path dir, EconomyManager eco) {
@@ -332,7 +338,32 @@ public final class DuelManager {
    }
 
    // ------------------------------------------------------------------ arena
+   private boolean dimLoaded(MinecraftServer server, String id) {
+      try {
+         return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(id))) != null;
+      } catch (RuntimeException e) {
+         return false;
+      }
+   }
+
+   private String flagText() {
+      return this.dimension + "@" + this.cx + "," + this.cz;
+   }
+
    public void prepareArena(MinecraftServer server) {
+      if (!this.dimLoaded(server, this.dimension)) {
+         SimSmp.LOGGER.warn("Duel dimension {} is not loaded (datapack/dimension JSON problem?) - using minecraft:the_end far from the island instead", this.dimension);
+         this.dimension = "minecraft:the_end";
+         this.cx = 600;
+         this.cz = 600;
+      }
+
+      try {
+         this.built = Files.exists(this.builtFlag) && Files.readString(this.builtFlag).trim().equals(this.flagText());
+      } catch (IOException e) {
+         this.built = false;
+      }
+
       if (!this.built && this.buildAt == 0L) {
          run(server, "execute in " + this.dimension + " run forceload add " + (this.cx - 40) + " " + (this.cz - 40) + " " + (this.cx + 40) + " " + (this.cz + 40));
          this.buildAt = System.currentTimeMillis() + 8000L;
@@ -365,7 +396,7 @@ public final class DuelManager {
 
       this.built = true;
       try {
-         Files.writeString(this.builtFlag, "built");
+         Files.writeString(this.builtFlag, this.flagText());
       } catch (IOException ignored) {
       }
 
@@ -464,6 +495,8 @@ public final class DuelManager {
       }
 
       this.phase = Phase.SELECT;
+      this.tpChecked = false;
+      this.selectStart = System.currentTimeMillis();
       this.phaseEnd = System.currentTimeMillis() + this.selectSeconds * 1000L;
       this.tellAll(server, "DUEL: " + this.f[0].name + " vs " + this.f[1].name + "! Watch with /watch and bet with /duelbet <player> <amount>.", ChatFormatting.GOLD);
       for (ServerPlayer p : ps) {
@@ -730,6 +763,19 @@ public final class DuelManager {
             ServerPlayer from = this.player(server, e.getValue().from);
             if (from != null) {
                Msg.info(from, "Your duel challenge expired.");
+            }
+         }
+      }
+
+      if (this.phase == Phase.SELECT && !this.tpChecked && now > this.selectStart + 2000L) {
+         this.tpChecked = true;
+         for (int i = 0; i < 2; i++) {
+            ServerPlayer p = this.player(server, this.f[i].id);
+            if (p != null && !p.level().dimension().equals(ResourceKey.create(Registries.DIMENSION, Identifier.parse(this.dimension)))) {
+               SimSmp.LOGGER.error("Duel teleport failed: {} is in {} but the arena is {}", this.f[i].name, dimOf(p), this.dimension);
+               this.tellAll(server, "DUEL cancelled: could not teleport to the colosseum (" + this.dimension + "). Tell an admin to check the server log.", ChatFormatting.RED);
+               this.finish(server, null, true);
+               return;
             }
          }
       }
