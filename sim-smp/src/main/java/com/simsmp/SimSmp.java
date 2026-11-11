@@ -67,6 +67,7 @@ public class SimSmp implements ModInitializer {
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
       ServerLifecycleEvents.SERVER_STARTED.register(duel::prepareArena);
+      ServerLifecycleEvents.SERVER_STARTED.register(srv -> bank.startWeb());
       net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> duel.onFatalDamage(entity));
       PlayerBlockBreakEvents.AFTER.register((After)(level, player, pos, state, blockEntity) -> {
          if (player instanceof ServerPlayer sp) {
@@ -122,6 +123,7 @@ public class SimSmp implements ModInitializer {
          classes.save();
          ranks.save();
          bank.save();
+         bank.stopWeb();
          market.save();
          shop.save();
       });

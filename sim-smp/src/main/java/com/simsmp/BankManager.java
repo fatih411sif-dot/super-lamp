@@ -82,6 +82,8 @@ public final class BankManager {
    private double volatility = 6.0;
    private double spread = 2.0;
    private long approvalLimit = 50000L;
+   private int webPort = 8123;
+   private Runnable web;
 
    public BankManager(Path dir, EconomyManager eco) {
       this.dir = dir;
@@ -107,6 +109,7 @@ public final class BankManager {
             p.setProperty("volatilityPercent", "6");
             p.setProperty("spreadPercent", "2");
             p.setProperty("approvalLimit", "50000");
+            p.setProperty("webPort", "8123");
             try (Writer w = Files.newBufferedWriter(this.cfgFile)) {
                p.store(w, "SIM bank. Gold price per ingot, moves every intervalSeconds. Money withdrawals above approvalLimit need a teller.");
             }
@@ -119,6 +122,7 @@ public final class BankManager {
          this.volatility = Double.parseDouble(p.getProperty("volatilityPercent", "6").trim());
          this.spread = Double.parseDouble(p.getProperty("spreadPercent", "2").trim());
          this.approvalLimit = Long.parseLong(p.getProperty("approvalLimit", "50000").trim());
+         this.webPort = Integer.parseInt(p.getProperty("webPort", "8123").trim());
          if (Files.exists(this.file)) {
             try (Reader r = Files.newBufferedReader(this.file)) {
                Data d = GSON.fromJson(r, Data.class);
@@ -202,7 +206,7 @@ public final class BankManager {
       this.data.prevPrice = old;
       this.data.price = now;
       this.data.history.add(now);
-      while (this.data.history.size() > 24) {
+      while (this.data.history.size() > 144) {
          this.data.history.remove(0);
       }
 
@@ -487,6 +491,50 @@ public final class BankManager {
 
    public long wallet(UUID id) {
       return this.eco.get(id);
+   }
+
+   // ------------------------------------------------------------------ price web page (read-only)
+   private synchronized String priceJson() {
+      StringBuilder sb = new StringBuilder("{");
+      String sym = this.eco.fmt(0L).replace("0", "");
+      sb.append("\"currency\":\"").append(sym.replace("\\", "\\\\").replace("\"", "\\\"")).append("\",");
+      sb.append("\"price\":").append(this.data.price).append(',');
+      sb.append("\"prevPrice\":").append(this.data.prevPrice).append(',');
+      sb.append("\"buyPrice\":").append(this.buyPrice()).append(',');
+      sb.append("\"sellPrice\":").append(this.sellPrice()).append(',');
+      sb.append("\"intervalSeconds\":").append(this.intervalSeconds).append(',');
+      sb.append("\"nextUpdateSeconds\":").append(Math.max(0L, (this.data.nextUpdate - System.currentTimeMillis()) / 1000L)).append(',');
+      sb.append("\"history\":[");
+      for (int i = 0; i < this.data.history.size(); i++) {
+         sb.append(i == 0 ? "" : ",").append(this.data.history.get(i));
+      }
+
+      return sb.append("]}").toString();
+   }
+
+   /** starts the tiny web server (webPort in bank.properties, 0 = off). Needs that port to be open on the host. */
+   public void startWeb() {
+      if (this.webPort <= 0 || this.web != null) {
+         return;
+      }
+
+      try {
+         this.web = GoldWeb.start(this.webPort, this::priceJson);
+         SimSmp.LOGGER.info("Gold price page: http://<server-ip>:{}/  (set webPort=0 in bank.properties to turn it off)", this.webPort);
+      } catch (Throwable e) {
+         SimSmp.LOGGER.warn("Could not start the gold price web page on port " + this.webPort + " (port not open, already used, or this Java has no jdk.httpserver)", e);
+      }
+   }
+
+   public void stopWeb() {
+      if (this.web != null) {
+         try {
+            this.web.run();
+         } catch (Throwable ignored) {
+         }
+
+         this.web = null;
+      }
    }
 
    // ------------------------------------------------------------------ commands
