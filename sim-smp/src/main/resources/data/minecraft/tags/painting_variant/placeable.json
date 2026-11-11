@@ -1,7 +1,13 @@
 {
  "replace": false,
  "values": [
-  "sim_smp:foto_2",
-  "sim_smp:photo"
+  {
+   "id": "sim_smp:foto_2",
+   "required": false
+  },
+  {
+   "id": "sim_smp:photo",
+   "required": false
+  }
  ]
 }
