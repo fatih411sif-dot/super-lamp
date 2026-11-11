@@ -90,7 +90,7 @@ public final class BankMenu extends ChestMenu {
       this.view.setItem(S_DEP_GOLD, Ui.named(Items.GOLD_BLOCK, "Deposit gold", ChatFormatting.GOLD, "Puts ALL gold ingots, nuggets", "and blocks from your inventory in"));
       this.view.setItem(S_WD_GOLD, Ui.named(Items.GOLD_INGOT, "Withdraw gold", ChatFormatting.GOLD, "Left: 1 ingot", "Right: 1 block (9 ingots)", "Shift: everything"));
       this.view.setItem(S_SELL, Ui.named(Items.REDSTONE, "Sell gold at the market", ChatFormatting.RED, "Gold in the bank -> money in the bank", "Price: " + b.fmt(b.sellPrice()) + " / ingot", "Left: 1 ingot  Right: 10  Shift: all"));
-      this.view.setItem(S_BUY, Ui.named(Items.LIME_DYE, "Buy gold at the market", ChatFormatting.GREEN, "Money in the bank -> gold in the bank", "Price: " + b.fmt(b.buyPrice()) + " / ingot", "Left: 1 ingot  Right: 10  Shift: max"));
+      this.view.setItem(S_BUY, Ui.named(Items.EMERALD, "Buy gold at the market", ChatFormatting.GREEN, "Money in the bank -> gold in the bank", "Price: " + b.fmt(b.buyPrice()) + " / ingot", "Left: 1 ingot  Right: 10  Shift: max"));
       List<String> logLines = new ArrayList<>();
       for (int i = Math.max(0, a.log.size() - 6); i < a.log.size(); i++) {
          logLines.add(a.log.get(i));
@@ -114,7 +114,7 @@ public final class BankMenu extends ChestMenu {
          int slot = S_TICKER + (7 - (h.size() - start)) + (i - start);
          long v = h.get(i);
          long before = i == 0 ? v : h.get(i - 1);
-         Item it = i == h.size() - 1 ? Items.GOLD_INGOT : v > before ? Items.LIME_DYE : v < before ? Items.RED_DYE : Items.GRAY_DYE;
+         Item it = i == h.size() - 1 ? Items.GOLD_INGOT : v > before ? Items.EMERALD : v < before ? Items.REDSTONE : Items.IRON_INGOT;
          ChatFormatting c = v > before ? ChatFormatting.GREEN : v < before ? ChatFormatting.RED : ChatFormatting.GRAY;
          this.view.setItem(slot, Ui.named(it, b.fmt(v), c, i == h.size() - 1 ? "Now" : (h.size() - 1 - i) * 5 + " min ago"));
       }

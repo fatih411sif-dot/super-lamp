@@ -360,7 +360,8 @@ public final class BankManager {
          int c = (int)Math.min(64L, left);
          ItemStack st = new ItemStack(item, c);
          if (!p.getInventory().add(st) && !st.isEmpty()) {
-            p.drop(st, false);
+            net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st);
+            p.level().addFreshEntity(drop);
          }
 
          left -= c;
