@@ -83,7 +83,8 @@ public final class BuyMenu extends ChestMenu {
             engine.describe()
          )
       );
-      Component title = Component.literal("Ore Shop (/buy)");
+      boolean bedrock = player.getUUID().getMostSignificantBits() == 0L;
+      Component title = bedrock ? Component.literal("Ore Shop (/buy)") : Component.literal("\ue001\ue903").withStyle(ChatFormatting.WHITE);
       player.openMenu(new SimpleMenuProvider((id, inv, p) -> {
          BuyMenu m = new BuyMenu(id, inv, view, player, engine, eco);
          System.arraycopy(slotIds, 0, m.ids, 0, 45);
