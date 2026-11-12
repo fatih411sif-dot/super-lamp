@@ -66,6 +66,14 @@ public final class BankManager {
       Map<String, Account> accounts = new HashMap<>();
       Set<String> tellers = new HashSet<>();
       List<Pending> pending = new ArrayList<>();
+      String owner = "";
+      long ownerDiamonds;
+   }
+
+   private static BankManager instance;
+
+   public static BankManager get() {
+      return instance;
    }
 
    private final Path dir;
@@ -90,6 +98,7 @@ public final class BankManager {
       this.file = dir.resolve("bank.json");
       this.cfgFile = dir.resolve("bank.properties");
       this.eco = eco;
+      instance = this;
    }
 
    // ------------------------------------------------------------------ load / save
@@ -192,7 +201,9 @@ public final class BankManager {
    private synchronized void updatePrice(MinecraftServer server) {
       long old = this.data.price;
       double change = this.rnd.nextGaussian() * this.volatility / 100.0;
-      change += (double)(this.basePrice - old) / this.basePrice * 0.05;
+      PriceEngine pe = PriceEngine.get();
+      double target = this.basePrice * (pe == null ? 1.0 : pe.goldFactor());
+      change += (target - old) / target * 0.05;
       String headline = null;
       if (this.rnd.nextInt(100) < 12) {
          boolean up = this.rnd.nextBoolean();
@@ -233,6 +244,80 @@ public final class BankManager {
       if (this.dirty) {
          this.save();
       }
+   }
+
+   // ------------------------------------------------------------------ bank owner (receives gold + diamonds sold through /sell)
+   public synchronized boolean hasOwner() {
+      return !this.data.owner.isEmpty();
+   }
+
+   public synchronized boolean isOwner(UUID id) {
+      return id.toString().equals(this.data.owner);
+   }
+
+   public synchronized void setOwner(UUID id) {
+      this.data.owner = id.toString();
+      this.dirty = true;
+   }
+
+   public synchronized long ownerDiamonds() {
+      return this.data.ownerDiamonds;
+   }
+
+   /** /sell of gold or diamond items: the goods go to the bank owner. Gold is credited to the owner's bank account. */
+   public synchronized void redirectToOwner(String itemId, int count) {
+      if (this.data.owner.isEmpty()) {
+         return;
+      }
+
+      long nug = PriceEngine.goldNuggets(itemId) * count;
+      if (nug > 0L) {
+         this.account(UUID.fromString(this.data.owner)).nuggets += nug;
+      }
+
+      long dia = PriceEngine.diamonds(itemId) * count;
+      if (dia > 0L) {
+         this.data.ownerDiamonds += dia;
+      }
+
+      this.dirty = true;
+   }
+
+   /** what the system pays for this item when it is gold (nuggets x current bank sell price); -1 = not gold */
+   public long goldValue(String itemId, int count) {
+      long nug = PriceEngine.goldNuggets(itemId) * count;
+      return nug <= 0L ? -1L : nug * this.sellPrice() / INGOT;
+   }
+
+   /** inflation control: the bank sells gold from the owner's account; returns ingots sold */
+   public synchronized long stabilizeSell(MinecraftServer server, long ingots) {
+      if (this.data.owner.isEmpty() || ingots <= 0L) {
+         return 0L;
+      }
+
+      Account a = this.account(UUID.fromString(this.data.owner));
+      long n = Math.min(ingots * INGOT, a.nuggets);
+      long sold = n / INGOT;
+      if (sold <= 0L) {
+         return 0L;
+      }
+
+      n = sold * INGOT;
+      long value = n * this.sellPrice() / INGOT;
+      a.nuggets -= n;
+      a.money += value;
+      this.log(a, "Sold " + fmtGold(n) + " gold to cool inflation for " + this.eco.fmt(value));
+      this.data.prevPrice = this.data.price;
+      this.data.price = Math.max(this.minPrice, Math.round(this.data.price * (1.0 - 0.004 * sold)));
+      this.data.history.add(this.data.price);
+      return sold;
+   }
+
+   public synchronized long takeOwnerDiamonds() {
+      long d = this.data.ownerDiamonds;
+      this.data.ownerDiamonds = 0L;
+      this.dirty = true;
+      return d;
    }
 
    // ------------------------------------------------------------------ accounts
@@ -574,6 +659,46 @@ public final class BankManager {
                return 1;
             }))
       );
+      LiteralArgumentBuilder<CommandSourceStack> own = Commands.literal("owner");
+      own.executes(ctx -> {
+         ServerPlayer p = ctx.getSource().getPlayerOrException();
+         Msg.info(p, "Bank owner: " + (this.hasOwner() ? this.nameOf(UUID.fromString(this.data.owner)) : "nobody (set one with /bank owner set <player>)"));
+         if (this.isOwner(p.getUUID()) || isOp(p)) {
+            long ng = this.hasOwner() ? this.account(UUID.fromString(this.data.owner)).nuggets : 0L;
+            Msg.info(p, "Owner stock: gold " + fmtGold(ng) + " (in the owner's bank account), diamonds " + this.ownerDiamonds() + " (/bank owner take).");
+         }
+
+         return 1;
+      });
+      own.then(
+         Commands.literal("set")
+            .requires(Commands.hasPermission(new net.minecraft.server.permissions.PermissionCheck.Require(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)))
+            .then(Commands.argument("player", EntityArgument.player()).executes(ctx -> {
+               ServerPlayer t = EntityArgument.getPlayer(ctx, "player");
+               this.setOwner(t.getUUID());
+               ctx.getSource().sendSuccess(() -> Component.literal(Msg.name(t) + " is now the bank owner."), true);
+               Msg.ok(t, "You are the bank owner. Gold and diamonds sold with /sell go to you (gold into your bank account, diamonds via /bank owner take).");
+               return 1;
+            }))
+      );
+      own.then(Commands.literal("take").executes(ctx -> {
+         ServerPlayer p = ctx.getSource().getPlayerOrException();
+         if (!this.isOwner(p.getUUID()) && !isOp(p)) {
+            Msg.err(p, "Only the bank owner can do that.");
+            return 0;
+         }
+
+         long d = this.takeOwnerDiamonds();
+         while (d > 0L) {
+            int c = (int)Math.min(64L, d);
+            ItemGiver.give(p, new ItemStack(Items.DIAMOND, c));
+            d -= c;
+         }
+
+         Msg.ok(p, "Diamonds collected.");
+         return 1;
+      }));
+      bank.then(own);
       LiteralArgumentBuilder<CommandSourceStack> teller = Commands.literal("teller");
       teller.requires(Commands.hasPermission(new net.minecraft.server.permissions.PermissionCheck.Require(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)));
       teller.then(Commands.literal("add").then(Commands.argument("player", EntityArgument.player()).executes(ctx -> {

@@ -80,7 +80,7 @@ final class EconomyCommands {
          List<String> chunk = new ArrayList<>();
 
          for (Entry<String, Long> e : cfg.prices.entrySet()) {
-            chunk.add(Msg.pretty(e.getKey()) + " " + eco.fmt(e.getValue()));
+            chunk.add(Msg.pretty(e.getKey()) + " " + eco.fmt(PriceEngine.get() == null ? e.getValue() : PriceEngine.get().effective(e.getKey(), e.getValue())));
             if (chunk.size() == 4) {
                p.sendSystemMessage(Component.literal(String.join("  |  ", chunk)).withStyle(ChatFormatting.GRAY));
                chunk.clear();

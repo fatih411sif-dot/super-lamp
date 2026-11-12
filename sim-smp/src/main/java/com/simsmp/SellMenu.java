@@ -51,9 +51,29 @@ public final class SellMenu extends ChestMenu {
             if (!stack.isEmpty()) {
                String key = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                Long price = this.cfg.prices.get(key);
-               if (price != null && price > 0L) {
-                  total += this.classes.sellValue(sp.getUUID(), stack, price);
+               PriceEngine pe = PriceEngine.get();
+               BankManager bank = BankManager.get();
+               long gold = bank == null ? -1L : bank.goldValue(key, stack.getCount());
+               if (gold > 0L) {
+                  // gold: priced by the bank's gold price, and the gold goes to the bank owner
+                  total += gold;
                   sold.merge(key, stack.getCount(), Integer::sum);
+                  bank.redirectToOwner(key, stack.getCount());
+                  if (pe != null) {
+                     pe.recordSale(key, stack.getCount(), gold);
+                  }
+               } else if (price != null && price > 0L) {
+                  long unit = pe == null ? price : pe.effective(key, price);
+                  long value = this.classes.sellValue(sp.getUUID(), stack, unit);
+                  total += value;
+                  sold.merge(key, stack.getCount(), Integer::sum);
+                  if (bank != null && PriceEngine.diamonds(key) > 0L) {
+                     bank.redirectToOwner(key, stack.getCount());
+                  }
+
+                  if (pe != null) {
+                     pe.recordSale(key, stack.getCount(), value);
+                  }
                } else {
                   unsellable.add(stack.copy());
                }
@@ -79,6 +99,10 @@ public final class SellMenu extends ChestMenu {
             }
 
             Msg.ok(sp, "Sold " + sbx + ".");
+            if (PriceEngine.get() != null) {
+               Msg.info(sp, PriceEngine.get().describe());
+            }
+
             Msg.ok(sp, "You earned " + this.eco.fmt(total) + ". Balance: " + this.eco.fmt(this.eco.get(sp.getUUID())));
          } else if (!unsellable.isEmpty()) {
             Msg.err(sp, "None of those items can be sold. They were returned to you.");

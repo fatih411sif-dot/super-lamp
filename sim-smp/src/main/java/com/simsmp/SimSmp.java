@@ -37,6 +37,11 @@ public class SimSmp implements ModInitializer {
       RankManager ranks = new RankManager(dir);
       ranks.load();
       ranks.setClasses(classes);
+      PriceEngine engine = new PriceEngine(dir);
+      engine.load();
+      engine.setRanks(ranks);
+      engine.setContext(cfg, eco);
+      MerchantGuard.register();
       BankManager bank = new BankManager(dir, eco);
       bank.load();
       DuelManager duel = new DuelManager(dir, eco);
@@ -63,6 +68,7 @@ public class SimSmp implements ModInitializer {
          casino.register(dispatcher);
          duel.register(dispatcher);
          bank.register(dispatcher);
+         engine.register(dispatcher);
       });
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -109,6 +115,7 @@ public class SimSmp implements ModInitializer {
             casino.tick(server);
             duel.tick(server);
             bank.tick(server);
+            engine.tick(server);
          }
 
          if (this.tickCounter % saveEvery == 0) {
@@ -123,6 +130,7 @@ public class SimSmp implements ModInitializer {
          classes.save();
          ranks.save();
          bank.save();
+         engine.save();
          bank.stopWeb();
          market.save();
          shop.save();

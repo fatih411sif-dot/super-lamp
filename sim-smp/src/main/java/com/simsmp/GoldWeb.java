@@ -26,6 +26,25 @@ final class GoldWeb {
             os.write(body);
          }
       });
+      srv.createContext("/api/economy", ex -> {
+         PriceEngine pe = PriceEngine.get();
+         byte[] body = (pe == null ? "{}" : pe.json()).getBytes(StandardCharsets.UTF_8);
+         ex.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+         ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+         ex.getResponseHeaders().set("Cache-Control", "no-store");
+         ex.sendResponseHeaders(200, body.length);
+         try (OutputStream os = ex.getResponseBody()) {
+            os.write(body);
+         }
+      });
+      srv.createContext("/economy", ex -> {
+         byte[] body = EconomyPage.HTML.getBytes(StandardCharsets.UTF_8);
+         ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+         ex.sendResponseHeaders(200, body.length);
+         try (OutputStream os = ex.getResponseBody()) {
+            os.write(body);
+         }
+      });
       srv.createContext("/", ex -> {
          String path = ex.getRequestURI().getPath();
          if (!path.equals("/") && !path.equals("/index.html")) {

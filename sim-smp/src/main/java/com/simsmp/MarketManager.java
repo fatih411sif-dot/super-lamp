@@ -189,6 +189,10 @@ public final class MarketManager {
          long tax = l.price() * Math.max(0, Math.min(100, this.cfg.marketTaxPercent)) / 100L;
          long payout = l.price() - tax;
          this.eco.add(l.seller(), payout);
+         if (PriceEngine.get() != null) {
+            PriceEngine.get().recordMarket(l.price());
+         }
+
          ItemGiver.give(buyer, l.stack().copy());
          this.save();
          Msg.ok(buyer, "You bought " + label(l) + " for " + this.eco.fmt(l.price()) + ".");
