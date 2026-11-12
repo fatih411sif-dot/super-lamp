@@ -187,11 +187,15 @@ final class ExtraCommands {
       );
    }
 
-   /** The vanilla elder-guardian scare (face + curse sound) plus a red title and a short blindness. */
+   /** Full-screen picture (resource pack glyph U+E950 shown as a big title), curse sound and a short blindness. */
    private static void scare(ServerPlayer p) {
-      p.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT, 1.0F));
+      net.minecraft.server.MinecraftServer server = p.level().getServer();
       p.connection.send(new ClientboundSetTitlesAnimationPacket(0, 30, 10));
-      p.connection.send(new ClientboundSetTitleTextPacket(Component.literal("BOO!").withStyle(new ChatFormatting[]{ChatFormatting.DARK_RED, ChatFormatting.BOLD})));
+      p.connection.send(new ClientboundSetTitleTextPacket(Component.literal("\ue950").withStyle(ChatFormatting.WHITE)));
+      server.getCommands().performPrefixedCommand(
+         server.createCommandSourceStack().withSuppressedOutput(),
+         "playsound minecraft:entity.elder_guardian.curse master " + p.getUUID() + " ~ ~ ~ 1 1"
+      );
       p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 40, 0, true, false, false));
    }
 }
