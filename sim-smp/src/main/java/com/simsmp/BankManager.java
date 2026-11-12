@@ -688,11 +688,11 @@ public final class BankManager {
             return 0;
          }
 
-         long d = this.takeOwnerDiamonds();
-         while (d > 0L) {
-            int c = (int)Math.min(64L, d);
+         long dia = this.takeOwnerDiamonds();
+         while (dia > 0L) {
+            int c = (int)Math.min(64L, dia);
             ItemGiver.give(p, new ItemStack(Items.DIAMOND, c));
-            d -= c;
+            dia -= c;
          }
 
          Msg.ok(p, "Diamonds collected.");
