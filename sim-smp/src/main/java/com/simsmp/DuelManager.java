@@ -107,6 +107,7 @@ public final class DuelManager {
    private final Set<UUID> watchers = new HashSet<>();
    private final Map<UUID, Challenge> challenges = new HashMap<>();
    private long buildAt;
+   private long clearAt;
    private boolean tpChecked;
    private long selectStart;
    private boolean built;
@@ -350,7 +351,17 @@ public final class DuelManager {
       return this.dimension + "@" + this.cx + "," + this.cz;
    }
 
+   private Path removedFlag() {
+      return this.dir.resolve("duel_arena_removed.txt");
+   }
+
    public void prepareArena(MinecraftServer server) {
+      if (Files.exists(this.removedFlag())) {
+         // the OP removed the colosseum: do not build it again until /duel buildarena
+         this.built = false;
+         return;
+      }
+
       if (!this.dimLoaded(server, this.dimension)) {
          SimSmp.LOGGER.warn("Duel dimension {} is not loaded (datapack/dimension JSON problem?) - using minecraft:the_end far from the island instead", this.dimension);
          this.dimension = "minecraft:the_end";
@@ -405,6 +416,11 @@ public final class DuelManager {
 
    /** OP: build it again (e.g. after changing the center) */
    public void rebuildArena(MinecraftServer server) {
+      try {
+         Files.deleteIfExists(this.removedFlag());
+      } catch (IOException ignored) {
+      }
+
       this.built = false;
       this.buildAt = 0L;
       try {
@@ -413,6 +429,29 @@ public final class DuelManager {
       }
 
       this.prepareArena(server);
+   }
+
+   /** OP: remove the built colosseum (everything it placed) and stop it from being rebuilt on restart */
+   public void removeArena(MinecraftServer server) {
+      try {
+         Files.writeString(this.removedFlag(), "removed");
+         Files.deleteIfExists(this.builtFlag);
+      } catch (IOException ignored) {
+      }
+
+      this.built = false;
+      this.buildAt = 0L;
+      run(server, "execute in " + this.dimension + " run forceload add " + (this.cx - 40) + " " + (this.cz - 40) + " " + (this.cx + 40) + " " + (this.cz + 40));
+      this.clearAt = System.currentTimeMillis() + 8000L;
+   }
+
+   private void clearArena(MinecraftServer server) {
+      for (int y = 62; y <= 80; y++) {
+         this.fill(server, -30, y, -30, 30, y, 30, "minecraft:air", "");
+      }
+
+      run(server, "execute in " + this.dimension + " run forceload remove " + (this.cx - 40) + " " + (this.cz - 40) + " " + (this.cx + 40) + " " + (this.cz + 40));
+      SimSmp.LOGGER.info("Duel colosseum removed from {}", this.dimension);
    }
 
    // ------------------------------------------------------------------ challenge
@@ -750,6 +789,11 @@ public final class DuelManager {
    // ------------------------------------------------------------------ once per second
    public void tick(MinecraftServer server) {
       long now = System.currentTimeMillis();
+      if (this.clearAt > 0L && now >= this.clearAt) {
+         this.clearAt = 0L;
+         this.clearArena(server);
+      }
+
       if (!this.built && this.buildAt > 0L && now >= this.buildAt) {
          this.buildAt = 0L;
          this.buildArena(server);
@@ -866,6 +910,15 @@ public final class DuelManager {
             .executes(ctx -> {
                this.rebuildArena(ctx.getSource().getServer());
                ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Building the colosseum in a few seconds..."), true);
+               return 1;
+            })
+      );
+      duel.then(
+         Commands.literal("removearena")
+            .requires(Commands.hasPermission(new net.minecraft.server.permissions.PermissionCheck.Require(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)))
+            .executes(ctx -> {
+               this.removeArena(ctx.getSource().getServer());
+               ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Removing the colosseum in a few seconds. Duels are off until /duel buildarena."), true);
                return 1;
             })
       );
