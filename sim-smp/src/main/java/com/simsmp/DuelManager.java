@@ -108,6 +108,8 @@ public final class DuelManager {
    private final Map<UUID, Challenge> challenges = new HashMap<>();
    private long buildAt;
    private long clearAt;
+   private long lastSweep;
+   private final Map<UUID, Long> joinCheck = new java.util.HashMap<>();
    private boolean tpChecked;
    private long selectStart;
    private boolean built;
@@ -331,10 +333,34 @@ public final class DuelManager {
 
    /** a player joining with a leftover file (server crashed / they quit mid-duel) gets everything back */
    public void onJoin(ServerPlayer p) {
-      if (this.idxOf(p.getUUID()) < 0 && !this.watchers.contains(p.getUUID()) && Files.exists(this.savedFile(p.getUUID()))) {
+      // checked a moment later (not inside the join event) so the teleport is not overridden by the login placement
+      this.joinCheck.put(p.getUUID(), System.currentTimeMillis() + 2500L);
+   }
+
+   private boolean inDuelNow(UUID id) {
+      return this.idxOf(id) >= 0 && this.active() || this.watchers.contains(id);
+   }
+
+   /** brings a player back who got stuck in the arena (quit mid-duel, crash, arena over): saved state, or a safe spot in the overworld */
+   private void returnIfStuck(MinecraftServer server, ServerPlayer p, boolean sweep) {
+      if (this.inDuelNow(p.getUUID())) {
+         return;
+      }
+
+      if (Files.exists(this.savedFile(p.getUUID()))) {
          if (this.restore(p)) {
             Msg.info(p, "Your items and position from the duel were returned.");
          }
+
+         return;
+      }
+
+      boolean inArena = dimOf(p).equals(this.dimension) && !this.dimension.startsWith("minecraft:");
+      if (inArena && !HierarchyMenu.isOp(p)) {
+         run(server, "effect clear " + p.getUUID());
+         run(server, "gamemode survival " + p.getUUID());
+         run(server, "execute in minecraft:overworld run spreadplayers 0 0 1 50 false " + p.getUUID());
+         Msg.info(p, "You were stuck in the colosseum, so you were sent back to the overworld.");
       }
    }
 
@@ -356,91 +382,28 @@ public final class DuelManager {
    }
 
    public void prepareArena(MinecraftServer server) {
-      if (Files.exists(this.removedFlag())) {
-         // the OP removed the colosseum: do not build it again until /duel buildarena
-         this.built = false;
-         return;
+      try {
+         Files.deleteIfExists(this.removedFlag());   // leftover from an older version: duels stay on
+      } catch (IOException ignored) {
       }
 
       if (!this.dimLoaded(server, this.dimension)) {
-         SimSmp.LOGGER.warn("Duel dimension {} is not loaded (datapack/dimension JSON problem?) - using minecraft:the_end far from the island instead", this.dimension);
+         SimSmp.LOGGER.warn("Duel dimension {} is not loaded - using minecraft:the_end far from the island instead", this.dimension);
          this.dimension = "minecraft:the_end";
          this.cx = 600;
          this.cz = 600;
       }
 
-      try {
-         this.built = Files.exists(this.builtFlag) && Files.readString(this.builtFlag).trim().equals(this.flagText());
-      } catch (IOException e) {
-         this.built = false;
-      }
-
-      if (!this.built && this.buildAt == 0L) {
-         run(server, "execute in " + this.dimension + " run forceload add " + (this.cx - 40) + " " + (this.cz - 40) + " " + (this.cx + 40) + " " + (this.cz + 40));
-         this.buildAt = System.currentTimeMillis() + 8000L;
-      }
+      // the mod no longer builds anything: the arena is whatever already exists at the configured dimension/center
+      this.built = true;
    }
 
    private void fill(MinecraftServer server, int x1, int y1, int z1, int x2, int y2, int z2, String block, String mode) {
       run(server, "execute in " + this.dimension + " run fill " + (this.cx + x1) + " " + y1 + " " + (this.cz + z1) + " " + (this.cx + x2) + " " + y2 + " " + (this.cz + z2) + " " + block + (mode.isEmpty() ? "" : " " + mode));
    }
 
-   public void buildArena(MinecraftServer server) {
-      this.fill(server, -30, 62, -30, 30, 62, 30, "minecraft:stone_bricks", "");
-      this.fill(server, -12, 62, -12, 12, 62, 12, "minecraft:sand", "");
-      this.fill(server, -13, 63, -13, 13, 65, 13, "minecraft:stone_brick_wall", "outline");
-      this.fill(server, -13, 66, -13, 13, 80, 13, "minecraft:barrier", "outline");
-      this.fill(server, -12, 80, -12, 12, 80, 12, "minecraft:barrier", "");
-      for (int k = 0; k < 6; k++) {
-         int h = 14 + k;
-         int y = 62 + k;
-         this.fill(server, -h, y, -h, h, y, -h, "minecraft:quartz_block", "");
-         this.fill(server, -h, y, h, h, y, h, "minecraft:quartz_block", "");
-         this.fill(server, -h, y, -h, -h, y, h, "minecraft:quartz_block", "");
-         this.fill(server, h, y, -h, h, y, h, "minecraft:quartz_block", "");
-      }
-
-      int[][] lamps = {{-13, -13}, {13, -13}, {-13, 13}, {13, 13}, {0, -13}, {0, 13}, {-13, 0}, {13, 0}};
-      for (int[] l : lamps) {
-         this.fill(server, l[0], 66, l[1], l[0], 66, l[1], "minecraft:glowstone", "");
-      }
-
-      this.built = true;
-      try {
-         Files.writeString(this.builtFlag, this.flagText());
-      } catch (IOException ignored) {
-      }
-
-      SimSmp.LOGGER.info("Duel colosseum built in {}", this.dimension);
-   }
-
-   /** OP: build it again (e.g. after changing the center) */
-   public void rebuildArena(MinecraftServer server) {
-      try {
-         Files.deleteIfExists(this.removedFlag());
-      } catch (IOException ignored) {
-      }
-
-      this.built = false;
-      this.buildAt = 0L;
-      try {
-         Files.deleteIfExists(this.builtFlag);
-      } catch (IOException ignored) {
-      }
-
-      this.prepareArena(server);
-   }
-
    /** OP: remove the built colosseum (everything it placed) and stop it from being rebuilt on restart */
    public void removeArena(MinecraftServer server) {
-      try {
-         Files.writeString(this.removedFlag(), "removed");
-         Files.deleteIfExists(this.builtFlag);
-      } catch (IOException ignored) {
-      }
-
-      this.built = false;
-      this.buildAt = 0L;
       run(server, "execute in " + this.dimension + " run forceload add " + (this.cx - 40) + " " + (this.cz - 40) + " " + (this.cx + 40) + " " + (this.cz + 40));
       this.clearAt = System.currentTimeMillis() + 8000L;
    }
@@ -789,14 +752,32 @@ public final class DuelManager {
    // ------------------------------------------------------------------ once per second
    public void tick(MinecraftServer server) {
       long now = System.currentTimeMillis();
+      if (!this.joinCheck.isEmpty()) {
+         Iterator<Map.Entry<UUID, Long>> jc = this.joinCheck.entrySet().iterator();
+         while (jc.hasNext()) {
+            Map.Entry<UUID, Long> e = jc.next();
+            if (now >= e.getValue()) {
+               jc.remove();
+               ServerPlayer jp = this.player(server, e.getKey());
+               if (jp != null) {
+                  this.returnIfStuck(server, jp, false);
+               }
+            }
+         }
+      }
+
+      if (now - this.lastSweep >= 5000L) {
+         this.lastSweep = now;
+         for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            if (this.idxOf(sp.getUUID()) < 0 && !this.watchers.contains(sp.getUUID())) {
+               this.returnIfStuck(server, sp, true);
+            }
+         }
+      }
+
       if (this.clearAt > 0L && now >= this.clearAt) {
          this.clearAt = 0L;
          this.clearArena(server);
-      }
-
-      if (!this.built && this.buildAt > 0L && now >= this.buildAt) {
-         this.buildAt = 0L;
-         this.buildArena(server);
       }
 
       Iterator<Map.Entry<UUID, Challenge>> it = this.challenges.entrySet().iterator();
@@ -905,20 +886,11 @@ public final class DuelManager {
          return 1;
       }));
       duel.then(
-         Commands.literal("buildarena")
-            .requires(Commands.hasPermission(new net.minecraft.server.permissions.PermissionCheck.Require(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)))
-            .executes(ctx -> {
-               this.rebuildArena(ctx.getSource().getServer());
-               ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Building the colosseum in a few seconds..."), true);
-               return 1;
-            })
-      );
-      duel.then(
          Commands.literal("removearena")
             .requires(Commands.hasPermission(new net.minecraft.server.permissions.PermissionCheck.Require(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)))
             .executes(ctx -> {
                this.removeArena(ctx.getSource().getServer());
-               ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Removing the colosseum in a few seconds. Duels are off until /duel buildarena."), true);
+               ctx.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Removing the old built colosseum in a few seconds. /duel keeps working."), true);
                return 1;
             })
       );
