@@ -55,7 +55,10 @@ public final class SellMenu extends ChestMenu {
                BankManager bank = BankManager.get();
                long gold = bank == null ? -1L : bank.goldValue(key, stack.getCount());
                DrugManager.Drug drug = DrugManager.of(stack);
-               if (drug != null) {
+               if (DrugManager.rawOf(stack) != null) {
+                  // raw drugs must be smelted in a furnace first
+                  unsellable.add(stack.copy());
+               } else if (drug != null) {
                   String dk = DrugManager.keyOf(drug);
                   long base = DrugManager.basePrice(drug);
                   long unit = pe == null ? base : pe.effective(dk, base);
@@ -116,7 +119,7 @@ public final class SellMenu extends ChestMenu {
 
             Msg.ok(sp, "You earned " + this.eco.fmt(total) + ". Balance: " + this.eco.fmt(this.eco.get(sp.getUUID())));
          } else if (!unsellable.isEmpty()) {
-            Msg.err(sp, "None of those items can be sold. They were returned to you.");
+            Msg.err(sp, "None of those items can be sold (raw drugs must be processed in a furnace first). They were returned to you.");
          }
 
          if (total > 0L && !unsellable.isEmpty()) {

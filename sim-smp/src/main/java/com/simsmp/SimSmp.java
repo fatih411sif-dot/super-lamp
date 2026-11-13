@@ -83,6 +83,7 @@ public class SimSmp implements ModInitializer {
             DrugManager.onBreak(sp, level, pos, state);
          }
       });
+      UseBlockCallback.EVENT.register((UseBlockCallback)(player, level, hand, hitResult) -> DrugManager.onUse(player, level, hand, hitResult));
       UseBlockCallback.EVENT
          .register((UseBlockCallback)(player, level, hand, hitResult) -> ClassEffects.onUseBlock(player, level, hand, hitResult, classes, cfg));
       ServerPlayConnectionEvents.JOIN.register((Join)(handler, sender, server) -> {
@@ -119,6 +120,7 @@ public class SimSmp implements ModInitializer {
             duel.tick(server);
             bank.tick(server);
             engine.tick(server);
+            DrugManager.tick(server);
          }
 
          if (this.tickCounter % saveEvery == 0) {
@@ -134,6 +136,7 @@ public class SimSmp implements ModInitializer {
          ranks.save();
          bank.save();
          engine.save();
+         DrugManager.save();
          bank.stopWeb();
          market.save();
          shop.save();
