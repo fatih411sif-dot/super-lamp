@@ -54,7 +54,18 @@ public final class SellMenu extends ChestMenu {
                PriceEngine pe = PriceEngine.get();
                BankManager bank = BankManager.get();
                long gold = bank == null ? -1L : bank.goldValue(key, stack.getCount());
-               if (gold > 0L) {
+               DrugManager.Drug drug = DrugManager.of(stack);
+               if (drug != null) {
+                  String dk = DrugManager.keyOf(drug);
+                  long base = DrugManager.basePrice(drug);
+                  long unit = pe == null ? base : pe.effective(dk, base);
+                  long value = this.classes.sellValue(sp.getUUID(), stack, unit);
+                  total += value;
+                  sold.merge(dk, stack.getCount(), Integer::sum);
+                  if (pe != null) {
+                     pe.recordSale(dk, stack.getCount(), value);
+                  }
+               } else if (gold > 0L) {
                   // gold: priced by the bank's gold price, and the gold goes to the bank owner
                   total += gold;
                   sold.merge(key, stack.getCount(), Integer::sum);

@@ -42,6 +42,7 @@ public class SimSmp implements ModInitializer {
       engine.setRanks(ranks);
       engine.setContext(cfg, eco);
       MerchantGuard.register();
+      DrugManager.load(dir);
       BankManager bank = new BankManager(dir, eco);
       bank.load();
       DuelManager duel = new DuelManager(dir, eco);
@@ -69,6 +70,7 @@ public class SimSmp implements ModInitializer {
          duel.register(dispatcher);
          bank.register(dispatcher);
          engine.register(dispatcher);
+         DrugManager.register(dispatcher, eco);
       });
       ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((level, entity, killed, source) -> KillXp.onKill(entity, killed, source, classes));
       ServerLifecycleEvents.SERVER_STARTED.register(market::load);
@@ -78,6 +80,7 @@ public class SimSmp implements ModInitializer {
       PlayerBlockBreakEvents.AFTER.register((After)(level, player, pos, state, blockEntity) -> {
          if (player instanceof ServerPlayer sp) {
             ClassEffects.onBlockBroken(sp, level, pos, state, classes, cfg);
+            DrugManager.onBreak(sp, level, pos, state);
          }
       });
       UseBlockCallback.EVENT
